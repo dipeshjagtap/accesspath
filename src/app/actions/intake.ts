@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 
+import { getCurrentUser } from "@/modules/auth/session";
 import {
   createIntake,
+  getIntakeById,
   updateConfirmedSummary,
 } from "@/modules/intakes/service";
 import {
@@ -22,13 +24,17 @@ export async function submitIntakeAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await getCurrentUser();
+
   const raw = {
     displayName: emptyToUndefined(formData.get("displayName")),
     askingFor: String(formData.get("askingFor") || "self"),
     region: String(formData.get("region") || ""),
     travelRange: emptyToUndefined(formData.get("travelRange")),
     practicalNeeds: String(formData.get("practicalNeeds") || ""),
-    supportCategory: "mobility_aid" as const,
+    supportCategorySlug: String(
+      formData.get("supportCategorySlug") || "disability_health_support",
+    ),
     budgetConstraint: emptyToUndefined(formData.get("budgetConstraint")),
     preferredLanguage: String(formData.get("preferredLanguage") || "en"),
     preferredContactMethod: emptyToUndefined(
@@ -52,7 +58,7 @@ export async function submitIntakeAction(
     };
   }
 
-  const intake = await createIntake(parsed.data);
+  const intake = await createIntake(parsed.data, user?.id ?? null);
   redirect(`/intake/${intake.id}/review`);
 }
 
@@ -60,6 +66,7 @@ export async function confirmSummaryAndGeneratePlanAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await getCurrentUser();
   const parsed = confirmedSummarySchema.safeParse({
     intakeId: String(formData.get("intakeId") || ""),
     confirmedSummary: String(formData.get("confirmedSummary") || ""),
@@ -74,6 +81,14 @@ export async function confirmSummaryAndGeneratePlanAction(
         string[]
       >,
     };
+  }
+
+  const intake = await getIntakeById(parsed.data.intakeId);
+  if (!intake) {
+    return { ok: false, message: "Intake not found." };
+  }
+  if (intake.userId && user && intake.userId !== user.id) {
+    return { ok: false, message: "You cannot edit this intake." };
   }
 
   await updateConfirmedSummary(

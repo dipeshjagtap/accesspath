@@ -33,7 +33,9 @@ export function ChecklistPanel({
           className="rounded-xl border border-border bg-card/80 p-4"
         >
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold">{item.title}</h3>
+            <h3 className="text-base font-semibold" id={`checklist-${item.id}`}>
+              {item.title}
+            </h3>
             <Badge
               variant={
                 item.status === "completed"
@@ -45,16 +47,27 @@ export function ChecklistPanel({
                       : "secondary"
               }
             >
+              <span className="sr-only">Status: </span>
               {STATUS_LABEL[item.status] ?? item.status}
             </Badge>
-            <Badge variant="outline">Owner: {item.ownerType}</Badge>
+            <Badge variant="outline">
+              <span className="sr-only">Owner: </span>
+              Owner: {item.ownerType}
+            </Badge>
           </div>
           <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
             {item.description}
           </p>
-          <form action={setChecklistStatusAction} className="flex flex-wrap gap-2">
+          <form
+            action={setChecklistStatusAction}
+            className="flex flex-wrap gap-2"
+            aria-labelledby={`checklist-${item.id}`}
+          >
             <input type="hidden" name="itemId" value={item.id} />
             <input type="hidden" name="intakeId" value={intakeId} />
+            <p className="w-full text-xs font-medium text-muted-foreground">
+              Update status
+            </p>
             {(
               [
                 ["not_started", "Not started"],
@@ -71,6 +84,7 @@ export function ChecklistPanel({
                 size="sm"
                 variant={item.status === value ? "default" : "outline"}
                 aria-pressed={item.status === value}
+                aria-label={`${item.title}: mark as ${label}`}
               >
                 {label}
               </Button>

@@ -1,10 +1,13 @@
 /**
- * Gemini through Vertex AI (server-side only).
+ * Gemini integration (server-side only).
  *
- * Auth:
- * - Local: Google Cloud Application Default Credentials (ADC)
- * - Cloud Run: dedicated service account with minimum Vertex AI permissions
- * - Never expose credentials to the browser or commit them to Git
+ * Preferred (PRD / competition):
+ * - Vertex AI with GOOGLE_CLOUD_PROJECT
+ * - Local ADC / Cloud Run dedicated service account
+ *
+ * Optional local fallback:
+ * - GEMINI_API_KEY or GOOGLE_API_KEY (Gemini API / AI Studio)
+ * - Never expose keys to the browser or commit them to Git
  */
 
 import { GoogleGenAI } from "@google/genai";
@@ -135,30 +138,18 @@ function extractUsage(response: {
   };
 }
 
-async function callVertexAi(
-  request: GroundedPlanRequest,
-): Promise<GroundedPlanResult> {
-  const started = Date.now();
-  const env = getEnv();
-
-  if (!isVertexConfigured(env.GOOGLE_CLOUD_PROJECT)) {
-    return fallbackResult(
-      request,
-      started,
-      "vertex_project_not_configured",
-      "GOOGLE_CLOUD_PROJECT is unset or still a placeholder. Using deterministic fallback.",
-    );
-  }
+async function generateWithClient(params: {
+  ai: GoogleGenAI;
+  model: string;
+  request: GroundedPlanRequest;
+  started: number;
+  source: "vertex_ai" | "gemini_api";
+}): Promise<GroundedPlanResult> {
+  const { ai, model, request, started, source } = params;
 
   try {
-    const ai = new GoogleGenAI({
-      vertexai: true,
-      project: env.GOOGLE_CLOUD_PROJECT,
-      location: env.GOOGLE_CLOUD_LOCATION,
-    });
-
     const response = await ai.models.generateContent({
-      model: env.VERTEX_AI_MODEL,
+      model,
       contents: buildUserPrompt(request),
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -176,7 +167,7 @@ async function callVertexAi(
         request,
         started,
         "empty_model_response",
-        "Vertex AI returned an empty response.",
+        `${source} returned an empty response.`,
       );
     }
 
@@ -188,7 +179,7 @@ async function callVertexAi(
         request,
         started,
         "invalid_json",
-        "Vertex AI response was not valid JSON.",
+        `${source} response was not valid JSON.`,
       );
     }
 
@@ -198,14 +189,14 @@ async function callVertexAi(
         request,
         started,
         "schema_validation_failed",
-        `Vertex AI JSON failed schema validation: ${validated.error.issues
+        `${source} JSON failed schema validation: ${validated.error.issues
           .map((issue) => issue.path.join("."))
           .join(", ")}`,
       );
     }
 
     const usage: VertexAiUsageMetrics = {
-      modelName: env.VERTEX_AI_MODEL,
+      modelName: model,
       latencyMs: Date.now() - started,
       ...usageBits,
       success: true,
@@ -215,17 +206,71 @@ async function callVertexAi(
       ok: true,
       plan: validated.data,
       usage,
-      source: "vertex_ai",
+      source,
     };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown Vertex AI error";
-    return fallbackResult(request, started, "vertex_ai_error", message);
+      error instanceof Error ? error.message : `Unknown ${source} error`;
+    return fallbackResult(request, started, `${source}_error`, message);
   }
 }
 
 export async function generateGroundedPlan(
   request: GroundedPlanRequest,
 ): Promise<GroundedPlanResult> {
-  return callVertexAi(request);
+  const started = Date.now();
+  const env = getEnv();
+  const model = env.VERTEX_AI_MODEL;
+
+  // Preferred: Vertex AI (competition / Cloud Run SA or local ADC)
+  if (isVertexConfigured(env.GOOGLE_CLOUD_PROJECT)) {
+    const ai = new GoogleGenAI({
+      vertexai: true,
+      project: env.GOOGLE_CLOUD_PROJECT,
+      location: env.GOOGLE_CLOUD_LOCATION,
+    });
+    const vertexResult = await generateWithClient({
+      ai,
+      model,
+      request,
+      started,
+      source: "vertex_ai",
+    });
+    if (vertexResult.ok) {
+      return vertexResult;
+    }
+    // If Vertex fails (common before ADC login), try API key next.
+  }
+
+  // Local fallback: Gemini API key (server-only)
+  if (env.GEMINI_API_KEY) {
+    const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+    const apiResult = await generateWithClient({
+      ai,
+      model,
+      request,
+      started,
+      source: "gemini_api",
+    });
+    if (apiResult.ok) {
+      return apiResult;
+    }
+    return apiResult;
+  }
+
+  if (isVertexConfigured(env.GOOGLE_CLOUD_PROJECT)) {
+    return fallbackResult(
+      request,
+      started,
+      "vertex_unavailable_no_api_key",
+      "Vertex AI call failed and GEMINI_API_KEY is unset. Run: gcloud auth application-default login",
+    );
+  }
+
+  return fallbackResult(
+    request,
+    started,
+    "no_ai_credentials",
+    "No Vertex project (ADC) and no GEMINI_API_KEY. Using deterministic fallback.",
+  );
 }

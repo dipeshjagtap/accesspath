@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ResourceCard } from "@/components/resource-card";
 import { Button } from "@/components/ui/button";
+import { dbConnectionHint } from "@/lib/db";
 import {
   listPrimaryAssistancePrograms,
   listPrimaryResources,
@@ -15,10 +16,18 @@ export const metadata: Metadata = {
 };
 
 export default async function ResourcesPage() {
-  const [resources, programs] = await Promise.all([
-    listPrimaryResources(),
-    listPrimaryAssistancePrograms(),
-  ]);
+  let resources: Awaited<ReturnType<typeof listPrimaryResources>> = [];
+  let programs: Awaited<ReturnType<typeof listPrimaryAssistancePrograms>> = [];
+  let dbError: string | null = null;
+
+  try {
+    [resources, programs] = await Promise.all([
+      listPrimaryResources(),
+      listPrimaryAssistancePrograms(),
+    ]);
+  } catch (error) {
+    dbError = dbConnectionHint(error);
+  }
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-10 sm:px-6">
@@ -35,6 +44,15 @@ export default async function ResourcesPage() {
           <Link href="/intake">Start with your needs</Link>
         </Button>
       </header>
+
+      {dbError ? (
+        <p
+          role="alert"
+          className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        >
+          {dbError}
+        </p>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2" aria-label="Providers and services">
         {resources.map((resource) => (

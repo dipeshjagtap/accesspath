@@ -23,40 +23,40 @@ export default function LandingPage() {
             From unmet need to delivered support
           </h1>
           <p className="max-w-2xl text-lg text-muted-foreground text-pretty">
-            Get a clear next-step plan for mobility support using verified
-            provider and assistance records — not guesses, diagnoses, or
-            prescriptions.
+            Discover published support programmes across education, essential
+            needs, and disability/health navigation — match from the database,
+            consent before sharing, and track outcomes. AI explains matches; it
+            never invents organisations.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link href="/intake">Start mobility-support journey</Link>
+              <Link href="/intake">Describe a support need</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/resources">Browse verified resources</Link>
+              <Link href="/login">Sign in</Link>
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">No account needed for the demo</Badge>
-            <Badge variant="outline">Fictional demo data</Badge>
+            <Badge variant="secondary">Multi-category demo</Badge>
+            <Badge variant="outline">Fictional verified providers only</Badge>
           </div>
         </div>
 
         <Card className="bg-card/90">
           <CardHeader>
-            <CardTitle>Who it helps</CardTitle>
+            <CardTitle>What AccessPath does</CardTitle>
             <CardDescription>
-              People exploring mobility aids, caregivers, and partner
-              organizations coordinating follow-up.
+              Guided discovery, consent-based requests, and case coordination.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             <p>
-              AccessPath organizes practical next steps, verified contacts, and
-              a checklist you can track.
+              People describe a need; the app returns database-backed programmes
+              from verified organisations and explains why they may be relevant.
             </p>
             <p>
-              After your plan, you can optionally consent to share a referral
-              with a demo partner organization and track follow-up.
+              Organisations manage programmes and requests. Admins review
+              identity evidence before live requests are allowed.
             </p>
           </CardContent>
         </Card>
@@ -68,8 +68,8 @@ export default function LandingPage() {
             <CardTitle className="text-base">Does not diagnose</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            We never diagnose a condition or prescribe a device. Qualified
-            professionals assess clinical suitability.
+            We never diagnose a condition, prescribe treatment or devices, or
+            decide official eligibility.
           </CardContent>
         </Card>
         <Card>
@@ -77,28 +77,29 @@ export default function LandingPage() {
             <CardTitle className="text-base">Evidence over guessing</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Provider and program facts come from curated records with source and
-            verification status. Information can change.
+            Matching uses published programme records only. Unverified orgs
+            cannot receive live requests.
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Privacy by design</CardTitle>
+            <CardTitle className="text-base">Consent before sharing</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            We collect only what is needed for navigation. Sharing with a partner
-            organization always requires your explicit consent.
+            A request sent is not acceptance. Acceptance is not delivered
+            assistance. Alternatives need fresh consent.
           </CardContent>
         </Card>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">How the journey works</h2>
-        <ol className="grid gap-3 md:grid-cols-3">
+        <ol className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           {[
-            "Describe practical needs — no diagnosis required.",
-            "Review and edit a plain-language summary.",
-            "Get verified resources and a trackable checklist.",
+            "Describe your need and confirm a plain-language summary.",
+            "Review matched programmes from the database with AI explanations.",
+            "Consent to share selected fields with one organisation.",
+            "Track status through outcome — or consent to an alternative.",
           ].map((step, index) => (
             <li
               key={step}
@@ -117,15 +118,16 @@ export default function LandingPage() {
 
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Read how personal information is used before you begin. This hackathon
-          build uses fictional people and curated demo resources only.
+          This hackathon build uses clearly labelled fictional demo
+          organisations and programmes. Read the privacy notice before you
+          begin.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
             <Link href="/privacy">Privacy notice</Link>
           </Button>
           <Button asChild>
-            <Link href="/intake">Begin</Link>
+            <Link href="/register">Create account</Link>
           </Button>
         </div>
       </section>

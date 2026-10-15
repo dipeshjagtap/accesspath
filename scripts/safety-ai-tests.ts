@@ -43,15 +43,22 @@ const expiredResource: PublicResource = {
 };
 
 const program: PublicAssistanceProgram = {
-  id: "33333333-3333-3333-3333-333333333333",
+  id: "33333333-3333-4333-8333-333333333333",
   name: "Demo Scheme",
+  organizationId: "22222222-2222-4222-8222-222222222222",
+  categoryId: "11111111-1111-4111-8111-111111111111",
+  description: "Demo programme description",
   officialUrl: "https://example.com/scheme",
+  evidenceUrl: "https://example.com/scheme/evidence",
   regions: ["Pune, Maharashtra (demo)"],
   purpose: "Demo purpose",
   verifiedRequirements: ["Proof of residence (demo)"],
+  requiredDocuments: ["Contact details"],
+  availabilityStatus: "accepting_requests",
   applicationRoute: "Official channel only",
   verificationStatus: "verified",
   lastVerifiedAt: new Date(),
+  publishedAt: new Date(),
   sourceNotes: "demo",
   eligibilityDisclaimer:
     "Potentially relevant — confirm eligibility with the official program.",

@@ -25,6 +25,9 @@
 service-account*.json
 google-credentials*.json
 
+# local embedded Postgres data (when Docker is unavailable)
+/.pgdata/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

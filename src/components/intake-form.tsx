@@ -22,21 +22,32 @@ import { DEMO_REGION_OPTIONS } from "@/lib/constants";
 
 const initialState: ActionState = { ok: true };
 
-export function IntakeForm() {
+export type CategoryOption = {
+  slug: string;
+  name: string;
+  description: string;
+};
+
+export function IntakeForm({ categories }: { categories: CategoryOption[] }) {
   const [state, formAction, pending] = useActionState(
     submitIntakeAction,
     initialState,
   );
+
+  const defaultSlug =
+    categories.find((c) => c.slug === "disability_health_support")?.slug ??
+    categories[0]?.slug ??
+    "disability_health_support";
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
       <ProgressSteps current={1} />
       <Card>
         <CardHeader>
-          <CardTitle>Mobility-support intake</CardTitle>
+          <CardTitle>Support need intake</CardTitle>
           <CardDescription>
             Share only what helps with navigation. Skip anything marked optional.
-            No account is required for this demo.
+            Sign in so your requests appear on your dashboard.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -80,6 +91,27 @@ export function IntakeForm() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="supportCategorySlug">Support category</Label>
+              <select
+                id="supportCategorySlug"
+                name="supportCategorySlug"
+                required
+                defaultValue={defaultSlug}
+                className="flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {categories.map((category) => (
+                  <option key={category.slug} value={category.slug}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Categories are configurable. Matching uses published programmes
+                from verified organisations only.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="region">City / region</Label>
               <select
                 id="region"
@@ -94,11 +126,6 @@ export function IntakeForm() {
                   </option>
                 ))}
               </select>
-              {state.fieldErrors?.region ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {state.fieldErrors.region.join(" ")}
-                </p>
-              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -113,7 +140,7 @@ export function IntakeForm() {
 
             <div className="space-y-2">
               <Label htmlFor="practicalNeeds">
-                Practical activity or accessibility challenge
+                Describe the practical support need
               </Label>
               <Textarea
                 id="practicalNeeds"
@@ -122,23 +149,6 @@ export function IntakeForm() {
                 maxLength={2000}
                 placeholder="Describe the practical need in your own words. Do not include a diagnosis unless you choose to."
               />
-              {state.fieldErrors?.practicalNeeds ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {state.fieldErrors.practicalNeeds.join(" ")}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="supportCategory">Support category</Label>
-              <Input
-                id="supportCategory"
-                name="supportCategoryDisplay"
-                value="Mobility aid"
-                readOnly
-                aria-readonly="true"
-              />
-              <input type="hidden" name="supportCategory" value="mobility_aid" />
             </div>
 
             <div className="space-y-2">
@@ -155,8 +165,8 @@ export function IntakeForm() {
 
             <div className="space-y-2">
               <Label htmlFor="professionalRecommendationStatus">
-                Has a qualified professional already assessed or recommended a
-                product? (optional)
+                Has a qualified professional already assessed or recommended
+                support? (optional)
               </Label>
               <select
                 id="professionalRecommendationStatus"
@@ -174,7 +184,7 @@ export function IntakeForm() {
 
             <div className="space-y-2">
               <Label htmlFor="accessNeeds">
-                Access needs when contacting a provider (optional)
+                Access needs when contacting an organisation (optional)
               </Label>
               <Textarea
                 id="accessNeeds"
@@ -186,8 +196,7 @@ export function IntakeForm() {
 
             <div className="space-y-2">
               <Label htmlFor="preferredContactMethod">
-                Preferred contact method if follow-up is requested later
-                (optional)
+                Preferred contact method (optional)
               </Label>
               <Input
                 id="preferredContactMethod"
@@ -202,8 +211,8 @@ export function IntakeForm() {
               <a className="underline underline-offset-2" href="/privacy">
                 privacy notice
               </a>
-              . This demo uses fictional data patterns — avoid real identity or
-              clinical documents.
+              . This demo uses fictional data — avoid real identity or clinical
+              documents.
             </p>
 
             <Button type="submit" size="lg" disabled={pending}>

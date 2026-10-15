@@ -19,7 +19,35 @@ function createClient() {
     max: 10,
     idle_timeout: 20,
     connect_timeout: 10,
+    onnotice: () => undefined,
+    connection: {
+      application_name: "accesspath-ai",
+    },
+    // Surface connection failures clearly (Drizzle otherwise only shows SQL text).
+    transform: {
+      undefined: null,
+    },
   });
+}
+
+/** Helpful hint when Postgres is down (local demo uses port 5433). */
+export function dbConnectionHint(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const cause =
+    error && typeof error === "object" && "cause" in error
+      ? String((error as { cause?: unknown }).cause)
+      : "";
+  if (
+    /ECONNREFUSED|CONNECT_TIMEOUT|connection.*refused/i.test(message) ||
+    /ECONNREFUSED|CONNECT_TIMEOUT/i.test(cause)
+  ) {
+    return (
+      "Database connection refused. Start Postgres with `npm run db:up` " +
+      "(or `docker compose up -d`), then retry. " +
+      "Expected DATABASE_URL=postgresql://accesspath@127.0.0.1:5433/postgres"
+    );
+  }
+  return message;
 }
 
 export function getSql() {

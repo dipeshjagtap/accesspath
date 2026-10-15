@@ -2,113 +2,93 @@
 
 **From unmet need to delivered support**
 
-AccessPath AI helps people navigate from an assistive-technology need to
-verified next steps, while helping partner organizations coordinate
-referrals and outcomes.
+AccessPath AI is a multi-category support discovery and case-coordination
+platform for India. People describe a need, match **published programmes from
+verified organisations**, consent before sharing, and track outcomes.
+Organisations publish programmes and manage requests. Admins review provider
+identity evidence.
 
-This repository implements the MVP defined in [`AccessPath_AI_PRD.md`](./AccessPath_AI_PRD.md).
+This repository implements [`AccessPath_AI_PRD v2.md`](./AccessPath_AI_PRD%20v2.md)
+and the Cursor implementation prompt.
 
-> AccessPath does **not** diagnose medical conditions, prescribe devices,
-> or determine final eligibility for assistance programs.
+> AccessPath does **not** diagnose medical conditions, prescribe treatment or
+> devices, invent NGO listings, or determine final eligibility.
 
-## Current status: Phase 2–3 (AI + referral UI)
+## Stack
 
-| Area | Status |
-| --- | --- |
-| Landing, intake, summary review, plan, checklist | Done |
-| Verified resources / programs UI | Done |
-| Gemini via Vertex AI (`@google/genai`) + ADC | Done (falls back if project/ADC missing) |
-| Usage / latency / cost logging | Done |
-| Referral consent UI + case creation | Done |
-| Partner dashboard + status updates + audit | Done |
-| Cloud Run deploy to competition project | Docs ready; needs your GCP project |
-
-## Project structure
-
-See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
-
-## Prerequisites
-
-- Node.js 20+
-- Docker (for local PostgreSQL)
-- Optional: Google Cloud SDK (ADC for Vertex AI in Phase 2+)
+Next.js App Router · React · TypeScript · Tailwind · PostgreSQL · Drizzle ·
+Vertex AI Gemini (with deterministic fallback)
 
 ## Quick start
 
 ```bash
-# 1. Install
 npm install
-
-# 2. Environment
 cp .env.example .env.local
-# Edit GOOGLE_CLOUD_PROJECT when you have the competition project id
 
-# 3. Start Postgres (host port 5433 → container 5432)
+# Database (pick one):
+# A) Docker
 docker compose up -d
+# B) Local Postgres 14 when Docker is unavailable
+npm run db:up
+# set DATABASE_URL=postgresql://accesspath@127.0.0.1:5433/postgres in .env.local
 
-# 4. Migrate + seed fictional demo data
-npm run db:migrate
+# Fresh PRD v2 schema (required after enum/table changes):
+# psql "$DATABASE_URL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+# psql "$DATABASE_URL" -f drizzle/0001_prd_v2.sql
+# or: npm run db:push
 npm run db:seed
-
-# 5. Dev server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).  
-Health: [http://localhost:3000/api/health](http://localhost:3000/api/health)
+Open [http://localhost:3000](http://localhost:3000) (or the port Next prints).
 
-## Environment variables
+### Demo accounts (fictional — from seed)
 
-| Variable | Required | Purpose |
+| Role | Email | Password |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | PostgreSQL URL (local default uses host port **5433**) |
-| `NEXT_PUBLIC_APP_URL` | Yes | Public app URL |
-| `APP_ENV` | No | `local` \| `staging` \| `production` |
-| `GOOGLE_CLOUD_PROJECT` | Phase 2+ | Competition GCP project |
-| `GOOGLE_CLOUD_LOCATION` | No | Vertex region (default `us-central1`) |
-| `VERTEX_AI_MODEL` | No | Gemini model id on Vertex AI |
-| `USE_FICTIONAL_DEMO_DATA` | Yes (demo) | Must be `true` for hackathon demos |
-| `DEMO_PARTNER_ACCESS_TOKEN` | Phase 3 | Optional demo partner gate |
+| User | `user.demo@accesspath.example` | `DemoUser123!` |
+| Org admin | `orgadmin.demo@accesspath.example` | `DemoOrgAdmin123!` |
+| Caseworker | `caseworker.demo@accesspath.example` | `DemoCaseworker123!` |
+| Platform admin | `admin.demo@accesspath.example` | `DemoAdmin123!` |
 
-**Secrets:** never put service-account JSON keys in the repo or client
-bundles. Local Vertex AI auth uses ADC; Cloud Run uses a dedicated
-service account — see [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
+## Acceptance demo path
+
+1. Sign in as **user** → `/intake` → pick category + **Pune, Maharashtra (demo)**
+2. Confirm summary → view plan (database programmes + AI explanation / fallback)
+3. Consent to a verified programme → case `submitted`
+4. Sign in as **org admin/caseworker** → `/org` → decline with reason
+5. As user, open case → review **alternative** → fresh consent
+6. Org updates alternative to a meaningful outcome (e.g. assistance delivered)
+7. Sign in as **admin** → `/admin` → verification evidence + audit trail
 
 ## Scripts
 
-| Script | Description |
-| --- | --- |
-| `npm run dev` | Next.js development server |
-| `npm run build` / `npm start` | Production build & serve |
-| `npm run lint` / `npm run format` | ESLint / Prettier |
-| `npm run db:generate` | Generate Drizzle migrations |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:seed` | Reset & load fictional demo data |
-| `npm run db:studio` | Drizzle Studio |
-
-## Deployment
-
-Cloud Run instructions: [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md).
-
-## Demo path
-
-1. `/` → Start mobility-support journey  
-2. Choose **Pune, Maharashtra (demo)** → review summary → get plan  
-3. Open a resource / program → update checklist  
-4. **Request referral** → consent → partner case  
-5. `/partner` → update case status  
-
 ```bash
-npm run smoke:phase1
-npm run test:ai-safety
-npx tsx --env-file=.env.local scripts/smoke-phase3.ts
+npm run demo:reset    # migrate/push + seed (after DB is up)
+npm run test          # Vitest unit tests
+npm run typecheck
+npm run lint
+npm run verify:journey
+npm run verify:all
 ```
 
-For live Gemini: set `GOOGLE_CLOUD_PROJECT` to the competition project and run
-`gcloud auth application-default login`. Without that, plans still work via
-deterministic grounded fallback.
+## Environment
 
-## Next implementation phase
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL (local host port **5433**) |
+| `NEXT_PUBLIC_APP_URL` | Yes | Public app URL |
+| `USE_FICTIONAL_DEMO_DATA` | Yes (demo) | Must stay `true` for hackathon |
+| `GOOGLE_CLOUD_PROJECT` | For live Gemini | Competition GCP project |
+| `GOOGLE_CLOUD_LOCATION` | No | Default `us-central1` |
+| `VERTEX_AI_MODEL` | No | Default `gemini-2.5-flash-lite` |
 
-**Phase 4 — Polish & submit:** accessibility pass, demo reset, deploy URL,
-pitch/architecture diagram, backup demo video.
+Never commit credentials. Local Vertex AI uses ADC; Cloud Run uses a
+dedicated least-privilege service account.
+
+## Docs
+
+- [`AccessPath_AI_PRD v2.md`](./AccessPath_AI_PRD%20v2.md) — product source of truth
+- [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+- [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)
+- [`docs/SUBMIT_CHECKLIST.md`](./docs/SUBMIT_CHECKLIST.md)

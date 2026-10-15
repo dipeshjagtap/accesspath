@@ -49,46 +49,37 @@ export function buildDeterministicChecklist(params: {
   }
 
   items.push({
-    title: "Ask whether a professional assessment is needed",
+    title: "Ask the organisation to confirm current eligibility and availability",
     description:
-      "Before choosing a mobility aid, ask a qualified professional whether an assessment or fitting is required. AccessPath does not prescribe devices.",
-    sourceResourceId: null,
-    ownerType,
-  });
-
-  items.push({
-    title: "Confirm availability, fitting, maintenance, and total cost",
-    description:
-      "Ask the provider or supplier directly. AccessPath does not store or invent prices.",
+      "AccessPath does not decide eligibility or guarantee service. Confirm details with the organisation before relying on them.",
     sourceResourceId: null,
     ownerType,
   });
 
   for (const program of params.programs) {
-    if (
-      program.verificationStatus !== "verified" &&
-      program.verificationStatus !== "needs_review"
-    ) {
+    if (program.verificationStatus !== "verified") {
       continue;
     }
     const docs =
-      program.verifiedRequirements.length > 0
-        ? ` Verified document notes from the curated record: ${program.verifiedRequirements.join("; ")}.`
-        : "";
+      program.requiredDocuments.length > 0
+        ? ` Documents noted in the curated record: ${program.requiredDocuments.join("; ")}.`
+        : program.verifiedRequirements.length > 0
+          ? ` Verified notes from the curated record: ${program.verifiedRequirements.join("; ")}.`
+          : "";
     items.push({
-      title: `Check official rules for ${program.name}`,
+      title: `Review programme: ${program.name}`,
       description:
-        `${program.eligibilityDisclaimer}${docs} Application route: ${program.applicationRoute ?? "See the official program source."}`,
+        `${program.eligibilityDisclaimer}${docs} Availability in catalogue: ${program.availabilityStatus.replaceAll("_", " ")}.`,
       sourceResourceId: null,
       ownerType,
     });
   }
 
-  if (params.plan.resource_ids.length === 0) {
+  if (params.programs.length === 0 && params.resources.length === 0) {
     items.push({
-      title: "No verified local match — contact an official source",
+      title: "No verified match found in this demo region",
       description:
-        "The curated dataset has no verified provider for this region. Ask a local disability-support organization or clinic for guidance, and treat any unverified listings with caution.",
+        "AccessPath will not invent organisations or programmes. Try another category/region, or check back when more verified listings are published.",
       sourceResourceId: null,
       ownerType,
     });

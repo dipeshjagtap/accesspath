@@ -29,7 +29,7 @@ async function main() {
     region: DEMO_REGION,
     practicalNeeds:
       "Father has difficulty walking longer distances and needs help understanding mobility-aid options.",
-    supportCategory: "mobility_aid",
+    supportCategorySlug: "disability_health_support",
     budgetConstraint: "Prefer lower-cost options",
     preferredLanguage: "en",
     professionalRecommendationStatus: "unsure",

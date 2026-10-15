@@ -35,7 +35,7 @@ export async function GET() {
   return NextResponse.json(
     {
       service: "accesspath-ai",
-      phase: 3,
+      phase: 4,
       status: status === 200 ? "ok" : "degraded",
       timestamp: new Date().toISOString(),
       env: {

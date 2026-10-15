@@ -3,9 +3,12 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { intakes, type Intake } from "@/lib/db/schema";
 import type { IntakeInput } from "@/modules/intakes/types";
-import { SUPPORT_CATEGORY_LABEL } from "@/lib/constants";
+import { getCategoryBySlug } from "@/modules/programmes/repository";
 
-export function buildNeedsSummaryDraft(input: IntakeInput): string {
+export function buildNeedsSummaryDraft(
+  input: IntakeInput,
+  categoryName: string,
+): string {
   const who =
     input.askingFor === "someone_else"
       ? "helping another person"
@@ -27,21 +30,31 @@ export function buildNeedsSummaryDraft(input: IntakeInput): string {
     : "";
 
   return (
-    `${name}${who}. Exploring ${SUPPORT_CATEGORY_LABEL.toLowerCase()} support in ${input.region}. ` +
+    `${name}${who}. Exploring ${categoryName.toLowerCase()} support in ${input.region}. ` +
     `Practical needs (in their words): ${input.practicalNeeds.trim()}.` +
     `${travel}${budget}${professional}${access} ` +
-    `AccessPath does not diagnose conditions or prescribe devices.`
+    `AccessPath does not diagnose conditions, prescribe treatment, or guarantee eligibility.`
   );
 }
 
-export async function createIntake(input: IntakeInput): Promise<Intake> {
+export async function createIntake(
+  input: IntakeInput,
+  userId?: string | null,
+): Promise<Intake> {
+  const category = await getCategoryBySlug(input.supportCategorySlug);
+  if (!category) {
+    throw new Error("Unknown support category");
+  }
+
   const db = getDb();
-  const draft = buildNeedsSummaryDraft(input);
+  const draft = buildNeedsSummaryDraft(input, category.name);
 
   const [row] = await db
     .insert(intakes)
     .values({
-      supportCategory: input.supportCategory,
+      userId: userId ?? null,
+      categoryId: category.id,
+      supportCategorySlug: category.slug,
       region: input.region,
       practicalNeeds: input.practicalNeeds,
       budgetConstraint: input.budgetConstraint || null,
@@ -82,4 +95,9 @@ export async function updateConfirmedSummary(
     throw new Error("Intake not found");
   }
   return row;
+}
+
+export async function listIntakesForUser(userId: string): Promise<Intake[]> {
+  const db = getDb();
+  return db.select().from(intakes).where(eq(intakes.userId, userId));
 }

@@ -75,7 +75,7 @@ export default async function PlanPage({
         >
           {plan.reviewStatus === "failed_fallback"
             ? "Deterministic fallback plan"
-            : "Gemini plan (Vertex AI)"}
+            : "Gemini plan"}
         </Badge>
         <Badge variant="outline">Model: {plan.modelName}</Badge>
         {plan.latencyMs ? (
@@ -187,11 +187,12 @@ export default async function PlanPage({
 
           <section className="space-y-3" aria-labelledby="programs-heading">
             <h2 id="programs-heading" className="text-xl font-semibold">
-              Assistance programs
+              Matched programmes
             </h2>
             {programList.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No curated assistance programs for this region.
+                No verified published programmes for this region and category.
+                AccessPath will not invent results.
               </p>
             ) : (
               programList.map((program) => (
@@ -215,9 +216,22 @@ export default async function PlanPage({
                       </Link>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
                     <p>{program.purpose}</p>
                     <p>{program.eligibilityDisclaimer}</p>
+                    {program.availabilityStatus ? (
+                      <p>
+                        Availability:{" "}
+                        {program.availabilityStatus.replaceAll("_", " ")}
+                      </p>
+                    ) : null}
+                    <Button asChild size="sm" className="w-full">
+                      <Link
+                        href={`/referral/${intakeId}?programmeId=${program.id}`}
+                      >
+                        Review & consent
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               ))
@@ -226,15 +240,15 @@ export default async function PlanPage({
 
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
-              <CardTitle className="text-lg">Want partner follow-up?</CardTitle>
+              <CardTitle className="text-lg">Submit a request</CardTitle>
               <CardDescription>
-                Share selected details with a demo NGO only after explicit
-                consent. Nothing is sent automatically.
+                Explicit consent is required before any organisation receives
+                your details. Sent ≠ accepted ≠ delivered.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="w-full">
-                <Link href={`/referral/${intakeId}`}>Request referral</Link>
+                <Link href={`/referral/${intakeId}`}>Choose a programme</Link>
               </Button>
             </CardContent>
           </Card>

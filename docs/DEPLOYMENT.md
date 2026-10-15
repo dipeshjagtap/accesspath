@@ -100,11 +100,23 @@ curl -s "https://YOUR_CLOUD_RUN_URL/api/health" | jq
 
 Expect `status: ok` once `DATABASE_URL` is wired and migrations/seed ran.
 
-## 6. What Phase 0 does / does not include
+## 6. Pre-submit checks
 
-| Included | Deferred |
+```bash
+npm run check:deploy-env
+npm run verify:all
+```
+
+After deploy, set `NEXT_PUBLIC_APP_URL` to the Cloud Run URL and re-run
+`npm run db:seed` against Cloud SQL so judges see fictional demo data.
+
+Full submit gate: [SUBMIT_CHECKLIST.md](./SUBMIT_CHECKLIST.md).
+
+## 7. What is / is not automated here
+
+| Included | Manual (needs competition GCP access) |
 | --- | --- |
-| Dockerfile (standalone Next.js) | Live Cloud Run deploy from this machine |
-| Env var contract + Secret Manager guidance | Vertex AI Gemini client (Phase 2) |
-| Service account instructions | Real auth / IAM for partners (Phase 3+) |
-| Local Postgres via Docker Compose | Production Cloud SQL provisioning automation |
+| Dockerfile (standalone Next.js) | Live `gcloud run deploy` |
+| Env contract + Secret Manager guidance | Creating the competition project resources |
+| Dedicated SA instructions | Attaching the SA in your org |
+| Local Postgres via Docker Compose | Cloud SQL instance provisioning |

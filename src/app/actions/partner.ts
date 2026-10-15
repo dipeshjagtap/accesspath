@@ -2,11 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 
+import { isPartnerAuthorized } from "@/lib/partner-auth";
 import { updateCaseStatus } from "@/modules/cases/service";
 import { updateCaseStatusSchema } from "@/modules/cases/types";
 import { getDemoCaseworker } from "@/modules/organizations/repository";
 
 export async function updatePartnerCaseStatusAction(formData: FormData) {
+  if (!(await isPartnerAuthorized())) {
+    throw new Error("Unauthorized partner access");
+  }
+
   const demo = await getDemoCaseworker();
   if (!demo) {
     throw new Error("Demo partner staff not seeded");

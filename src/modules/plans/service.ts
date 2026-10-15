@@ -16,16 +16,41 @@ import {
   PROMPT_VERSION,
   type NavigationPlan,
 } from "@/modules/plans/types";
-import {
-  listAssistanceProgramsForRegion,
-  listVerifiedResourcesForRegion,
-} from "@/modules/resources/repository";
+import { matchPublishedProgrammes } from "@/modules/programmes/repository";
+import type { PublicAssistanceProgram } from "@/modules/resources/types";
+import { listVerifiedResourcesForRegion } from "@/modules/resources/repository";
 
 export type PlanBundle = {
   plan: Plan;
   planJson: NavigationPlan;
   checklist: ChecklistItem[];
 };
+
+function programmeToLegacyShape(
+  p: Awaited<ReturnType<typeof matchPublishedProgrammes>>[number],
+): PublicAssistanceProgram {
+  return {
+    id: p.id,
+    name: p.name,
+    organizationId: p.organizationId,
+    categoryId: p.categoryId,
+    description: p.description,
+    officialUrl: p.officialUrl,
+    evidenceUrl: p.evidenceUrl,
+    regions: p.regions,
+    purpose: p.purpose,
+    verifiedRequirements: p.verifiedRequirements,
+    requiredDocuments: p.requiredDocuments,
+    availabilityStatus: p.availabilityStatus,
+    applicationRoute: p.applicationRoute,
+    verificationStatus: p.verificationStatus,
+    lastVerifiedAt: p.lastVerifiedAt,
+    publishedAt: p.publishedAt,
+    sourceNotes: p.sourceNotes,
+    eligibilityDisclaimer: p.eligibilityDisclaimer,
+    isFictionalDemo: p.isFictionalDemo,
+  };
+}
 
 export async function generatePlanForIntake(
   intakeId: string,
@@ -38,7 +63,12 @@ export async function generatePlanForIntake(
   const resources = await listVerifiedResourcesForRegion(intake.region, {
     includeNeedsReview: false,
   });
-  const programs = await listAssistanceProgramsForRegion(intake.region);
+  const matched = await matchPublishedProgrammes({
+    region: intake.region,
+    categoryId: intake.categoryId ?? undefined,
+    categorySlug: intake.supportCategorySlug,
+  });
+  const programs = matched.map(programmeToLegacyShape);
 
   const result = await generateGroundedPlan({
     confirmedSummary: intake.confirmedSummary,
@@ -50,13 +80,13 @@ export async function generatePlanForIntake(
   logUsageMetrics("generate_plan", result.usage);
 
   const planJson = navigationPlanSchema.parse(result.plan);
-  // Only keep resource IDs that exist in curated verified results
-  const allowedIds = new Set(resources.map((r) => r.id));
+  const allowedResourceIds = new Set(resources.map((r) => r.id));
+  const allowedProgramIds = new Set(programs.map((p) => p.id));
   planJson.resource_ids = planJson.resource_ids.filter((id) =>
-    allowedIds.has(id),
+    allowedResourceIds.has(id),
   );
   planJson.source_ids = planJson.source_ids.filter(
-    (id) => allowedIds.has(id) || programs.some((p) => p.id === id),
+    (id) => allowedResourceIds.has(id) || allowedProgramIds.has(id),
   );
 
   const checklistDraft = buildDeterministicChecklist({

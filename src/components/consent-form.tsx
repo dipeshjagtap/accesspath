@@ -7,7 +7,6 @@ import {
   type ReferralActionState,
 } from "@/app/actions/referral";
 import { SubmitButton } from "@/components/submit-button";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -34,10 +33,16 @@ export function ConsentForm({
   intakeId,
   organizationId,
   organizationName,
+  assistanceProgramId,
+  programmeName,
+  parentCaseId,
 }: {
   intakeId: string;
   organizationId: string;
   organizationName: string;
+  assistanceProgramId: string;
+  programmeName: string;
+  parentCaseId?: string;
 }) {
   const [state, formAction] = useActionState(
     submitReferralConsentAction,
@@ -47,17 +52,29 @@ export function ConsentForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Share a referral with consent</CardTitle>
+        <CardTitle>
+          {parentCaseId
+            ? "Consent to an alternative referral"
+            : "Submit a request with consent"}
+        </CardTitle>
         <CardDescription>
-          Nothing is shared until you explicitly consent. You can ask for
-          correction or deletion later.
+          Nothing is shared until you explicitly consent. A request being sent
+          is not the same as acceptance or delivered assistance.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-6">
           <input type="hidden" name="intakeId" value={intakeId} />
           <input type="hidden" name="organizationId" value={organizationId} />
+          <input
+            type="hidden"
+            name="assistanceProgramId"
+            value={assistanceProgramId}
+          />
           <input type="hidden" name="consentVersion" value={CONSENT_VERSION} />
+          {parentCaseId ? (
+            <input type="hidden" name="parentCaseId" value={parentCaseId} />
+          ) : null}
 
           {state.message ? (
             <p
@@ -69,10 +86,13 @@ export function ConsentForm({
           ) : null}
 
           <div className="rounded-xl border border-border bg-secondary/40 p-4 text-sm leading-relaxed">
-            <p className="font-medium text-foreground">Receiving organization</p>
+            <p className="font-medium text-foreground">Programme</p>
+            <p className="mt-1 text-muted-foreground">{programmeName}</p>
+            <p className="mt-3 font-medium text-foreground">Organisation</p>
             <p className="mt-1 text-muted-foreground">{organizationName}</p>
             <p className="mt-3 text-muted-foreground">
               Consent version: {CONSENT_VERSION}
+              {parentCaseId ? " · Fresh consent for alternative referral" : ""}
             </p>
           </div>
 
@@ -82,55 +102,54 @@ export function ConsentForm({
               id="purpose"
               name="purpose"
               required
-              defaultValue="Help coordinate mobility-support next steps and follow-up."
+              maxLength={500}
+              defaultValue={
+                parentCaseId
+                  ? "Request alternative support after the previous request was declined or stalled"
+                  : "Request support through a published programme"
+              }
             />
           </div>
 
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium">Fields that will be shared</legend>
+            <legend className="text-sm font-medium">
+              Fields that will be shared
+            </legend>
             {FIELD_OPTIONS.map((field) => (
               <label
                 key={field.id}
-                className="flex min-h-11 items-center gap-3 rounded-md border border-border px-3"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-border px-3"
               >
                 <input
                   type="checkbox"
                   name="fieldsShared"
                   value={field.id}
                   defaultChecked={
-                    field.id === "confirmed_summary" || field.id === "region"
+                    field.id === "confirmed_summary" ||
+                    field.id === "region" ||
+                    field.id === "practical_needs"
                   }
                 />
-                <span className="text-sm">{field.label}</span>
+                {field.label}
               </label>
             ))}
           </fieldset>
 
-          <label className="flex min-h-11 items-start gap-3 rounded-md border border-border px-3 py-3">
+          <label className="flex min-h-11 items-start gap-2 rounded-md border border-border px-3 py-3 text-sm">
             <input
               type="checkbox"
               name="allowContact"
               className="mt-1"
               required
             />
-            <span className="text-sm leading-relaxed">
-              I consent to share the selected fields with{" "}
-              <strong>{organizationName}</strong> and allow them to contact me
-              about this referral. I understand I can withdraw consent or request
-              deletion later.
+            <span>
+              I consent to sharing the selected fields with{" "}
+              <strong>{organizationName}</strong> for the stated purpose. I
+              understand AccessPath does not guarantee acceptance or delivery.
             </span>
           </label>
 
-          <div className="flex flex-wrap gap-3">
-            <SubmitButton
-              idleLabel="Consent and create referral"
-              pendingLabel="Recording consent…"
-              size="lg"
-            />
-            <Button asChild variant="outline" size="lg">
-              <a href={`/plan/${intakeId}`}>Cancel</a>
-            </Button>
-          </div>
+          <SubmitButton idleLabel="Submit request" pendingLabel="Submitting…" />
         </form>
       </CardContent>
     </Card>

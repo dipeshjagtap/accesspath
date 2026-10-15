@@ -26,7 +26,7 @@ export type GroundedPlanResult =
       ok: true;
       plan: NavigationPlan;
       usage: VertexAiUsageMetrics;
-      source: "vertex_ai";
+      source: "vertex_ai" | "gemini_api";
     }
   | {
       ok: false;

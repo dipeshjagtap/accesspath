@@ -7,7 +7,12 @@ export const intakeInputSchema = z.object({
   region: z.string().trim().min(1).max(200),
   travelRange: z.string().trim().max(120).optional(),
   practicalNeeds: z.string().trim().min(1).max(2000),
-  supportCategory: z.literal("mobility_aid").default("mobility_aid"),
+  supportCategorySlug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .default("disability_health_support"),
   budgetConstraint: z.string().trim().max(200).optional(),
   preferredLanguage: z.string().trim().max(40).default("en"),
   preferredContactMethod: z.string().trim().max(120).optional(),

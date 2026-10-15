@@ -20,17 +20,25 @@ export type PublicResource = Pick<
   | "isFictionalDemo"
 >;
 
+/** @deprecated Prefer PublicProgramme from modules/programmes — kept for AI grounding compatibility. */
 export type PublicAssistanceProgram = Pick<
   AssistanceProgram,
   | "id"
   | "name"
+  | "organizationId"
+  | "categoryId"
+  | "description"
   | "officialUrl"
+  | "evidenceUrl"
   | "regions"
   | "purpose"
   | "verifiedRequirements"
+  | "requiredDocuments"
+  | "availabilityStatus"
   | "applicationRoute"
   | "verificationStatus"
   | "lastVerifiedAt"
+  | "publishedAt"
   | "sourceNotes"
   | "eligibilityDisclaimer"
   | "isFictionalDemo"

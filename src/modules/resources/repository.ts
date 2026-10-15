@@ -36,13 +36,20 @@ function toPublicProgram(
   return {
     id: row.id,
     name: row.name,
+    organizationId: row.organizationId,
+    categoryId: row.categoryId,
+    description: row.description,
     officialUrl: row.officialUrl,
+    evidenceUrl: row.evidenceUrl,
     regions: row.regions,
     purpose: row.purpose,
     verifiedRequirements: row.verifiedRequirements,
+    requiredDocuments: row.requiredDocuments,
+    availabilityStatus: row.availabilityStatus,
     applicationRoute: row.applicationRoute,
     verificationStatus: row.verificationStatus,
     lastVerifiedAt: row.lastVerifiedAt,
+    publishedAt: row.publishedAt,
     sourceNotes: row.sourceNotes,
     eligibilityDisclaimer: row.eligibilityDisclaimer,
     isFictionalDemo: row.isFictionalDemo,
@@ -97,6 +104,7 @@ export async function listAssistanceProgramsForRegion(
     .filter(
       (row) =>
         row.regions.includes(region) &&
+        row.publishedAt != null &&
         (row.verificationStatus === "verified" ||
           row.verificationStatus === "needs_review"),
     )

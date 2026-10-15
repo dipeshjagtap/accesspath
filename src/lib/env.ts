@@ -15,7 +15,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   GOOGLE_CLOUD_PROJECT: z.string().min(1).optional(),
   GOOGLE_CLOUD_LOCATION: z.string().default("us-central1"),
-  VERTEX_AI_MODEL: z.string().default("gemini-2.0-flash-001"),
+  VERTEX_AI_MODEL: z.string().default("gemini-2.5-flash-lite"),
+  /** Gemini API / AI Studio key — server-only local fallback when Vertex is unavailable */
+  GEMINI_API_KEY: z.string().min(1).optional(),
   USE_FICTIONAL_DEMO_DATA: z
     .enum(["true", "false"])
     .default("true")
@@ -36,6 +38,8 @@ function readRawEnv(): Record<string, string | undefined> {
     GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
     GOOGLE_CLOUD_LOCATION: process.env.GOOGLE_CLOUD_LOCATION,
     VERTEX_AI_MODEL: process.env.VERTEX_AI_MODEL,
+    GEMINI_API_KEY:
+      process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || undefined,
     USE_FICTIONAL_DEMO_DATA: process.env.USE_FICTIONAL_DEMO_DATA,
     DEMO_PARTNER_ACCESS_TOKEN: process.env.DEMO_PARTNER_ACCESS_TOKEN,
   };
@@ -73,13 +77,21 @@ export function checkEnvHealth(): {
   }
 
   const project = process.env.GOOGLE_CLOUD_PROJECT;
-  if (
-    !project ||
-    project === "your-competition-gcp-project-id" ||
-    project === "YOUR_COMPETITION_GCP_PROJECT_ID"
-  ) {
+  const hasVertexProject =
+    Boolean(project) &&
+    project !== "your-competition-gcp-project-id" &&
+    project !== "YOUR_COMPETITION_GCP_PROJECT_ID";
+  const hasApiKey = Boolean(
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+  );
+
+  if (!hasVertexProject && !hasApiKey) {
     warnings.push(
-      "GOOGLE_CLOUD_PROJECT is unset or still a placeholder (Vertex AI will use deterministic fallback)",
+      "No Vertex project and no GEMINI_API_KEY — plans use deterministic fallback",
+    );
+  } else if (!hasVertexProject && hasApiKey) {
+    warnings.push(
+      "Using GEMINI_API_KEY locally; prefer Vertex AI + ADC for competition Cloud Run",
     );
   }
 
