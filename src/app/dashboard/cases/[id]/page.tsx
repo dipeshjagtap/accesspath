@@ -24,7 +24,7 @@ import { RECOVERY_TRIGGER_STATUSES } from "@/modules/cases/transitions";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Request details",
+  title: "Support request timeline",
 };
 
 export default async function UserCasePage({
@@ -51,7 +51,7 @@ export default async function UserCasePage({
     ) || isCaseOverdue(view.caseRow);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 py-10 sm:px-6">
+    <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 py-10 section-x">
       <header className="space-y-3">
         <Badge variant="outline">{view.caseRow.caseReference}</Badge>
         <h1 className="text-3xl font-semibold">{view.programmeName}</h1>

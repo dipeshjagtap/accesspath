@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react";
 import Link from "next/link";
 
 import { VerificationBadge } from "@/components/verification-badge";
@@ -13,7 +14,7 @@ import type { PublicResource } from "@/modules/resources/types";
 
 export function ResourceCard({ resource }: { resource: PublicResource }) {
   return (
-    <Card>
+    <Card className="lift rounded-2xl">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <VerificationBadge status={resource.verificationStatus} />
@@ -24,7 +25,7 @@ export function ResourceCard({ resource }: { resource: PublicResource }) {
             <Badge variant="secondary">Fictional demo</Badge>
           ) : null}
         </div>
-        <CardTitle className="text-xl">
+        <CardTitle className="text-brand-dark text-xl font-bold">
           <Link
             href={`/resources/${resource.id}`}
             className="underline-offset-2 hover:underline"
@@ -32,15 +33,16 @@ export function ResourceCard({ resource }: { resource: PublicResource }) {
             {resource.name}
           </Link>
         </CardTitle>
-        <CardDescription>{resource.region}</CardDescription>
+        <CardDescription className="inline-flex items-center gap-1.5">
+          <MapPin className="text-coral size-4" aria-hidden="true" />
+          {resource.region}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm leading-relaxed">
         <p>{resource.description}</p>
-        <p className="text-muted-foreground">
-          Source: {resource.sourceNotes}
-        </p>
+        <p className="text-muted-foreground">Source: {resource.sourceNotes}</p>
         {resource.lastVerifiedAt ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Last verified:{" "}
             {new Date(resource.lastVerifiedAt).toLocaleDateString("en-IN", {
               year: "numeric",

@@ -1,28 +1,55 @@
+import {
+  ArrowLeft,
+  CalendarClock,
+  ClipboardCheck,
+  FileLock2,
+  History,
+  ListTodo,
+  MapPin,
+  MessageSquare,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CaseStatusPill, CaseStatusTracker } from "@/components/case-status";
 import { OrgCaseUpdateForm } from "@/components/org-case-update-form";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { PageHero, heroSecondaryAction } from "@/components/page-hero";
 import { requireAnyOrgMember } from "@/modules/auth/permissions";
+import { caseStatusLabel, formatCaseDate } from "@/modules/cases/labels";
 import {
   getCaseForOrganization,
+  isCaseOverdue,
   listAuditForCase,
+  listUserVisibleNotes,
 } from "@/modules/cases/service";
 import { CASE_TRANSITIONS, type CaseStatus } from "@/modules/cases/transitions";
+import { getConsentForCase } from "@/modules/consent/service";
+import { getIntakeById } from "@/modules/intakes/service";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Case detail",
+  title: "Support request case details",
+};
+
+const SHARED_FIELD_LABELS: Record<string, string> = {
+  confirmed_summary: "Summary",
+  region: "Area",
+  practical_needs: "Need, in their words",
+  budget_constraint: "Budget",
+  access_needs: "Access needs",
+  preferred_contact_method: "Preferred contact",
+};
+
+type TimelineEntry = {
+  id: string;
+  at: Date;
+  icon: LucideIcon;
+  title: string;
+  detail?: string | null;
 };
 
 export default async function OrgCasePage({
@@ -41,63 +68,263 @@ export default async function OrgCasePage({
   const view = await getCaseForOrganization(id, membership.organization.id);
   if (!view) notFound();
 
-  const audit = await listAuditForCase(view.caseRow.id);
-  const allowed = CASE_TRANSITIONS[view.caseRow.status as CaseStatus] ?? [];
+  const { caseRow } = view;
+  const [audit, notes, consent, intake] = await Promise.all([
+    listAuditForCase(caseRow.id),
+    listUserVisibleNotes(caseRow.id),
+    getConsentForCase(caseRow.id),
+    getIntakeById(caseRow.intakeId),
+  ]);
+
+  const allowed = CASE_TRANSITIONS[caseRow.status as CaseStatus] ?? [];
+  const overdue = isCaseOverdue(caseRow);
+
+  const fieldValues: Record<string, string | null | undefined> = {
+    confirmed_summary: intake?.confirmedSummary,
+    region: intake?.region,
+    practical_needs: intake?.practicalNeeds,
+    budget_constraint: intake?.budgetConstraint,
+    access_needs: intake?.accessNeeds,
+    preferred_contact_method: intake?.preferredContactMethod,
+  };
+  const sharedFields =
+    consent && !consent.withdrawnAt
+      ? consent.fieldsShared
+          .map((field) => ({
+            field,
+            label: SHARED_FIELD_LABELS[field] ?? field,
+            value: fieldValues[field],
+          }))
+          .filter((item) => Boolean(item.value))
+      : [];
+
+  const timeline: TimelineEntry[] = [
+    ...audit.map((event): TimelineEntry => {
+      const meta = (event.metadata ?? {}) as Record<string, unknown>;
+      if (event.action === "status_changed") {
+        const from = String(meta.from ?? "");
+        const to = String(meta.to ?? "");
+        return {
+          id: event.id,
+          at: event.createdAt,
+          icon: History,
+          title:
+            from === to
+              ? "Details updated"
+              : `Status changed to ${caseStatusLabel(to).toLowerCase()}`,
+          detail:
+            typeof meta.statusReason === "string" ? meta.statusReason : null,
+        };
+      }
+      return {
+        id: event.id,
+        at: event.createdAt,
+        icon: ClipboardCheck,
+        title:
+          event.action === "alternative_case_created"
+            ? "Request received (alternative referral)"
+            : event.action === "case_created"
+              ? "Request received with consent"
+              : event.action.replaceAll("_", " "),
+      };
+    }),
+    ...notes.map((note): TimelineEntry => ({
+      id: note.id,
+      at: note.createdAt,
+      icon: MessageSquare,
+      title: "Message sent to the person",
+      detail: note.note,
+    })),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 py-10 sm:px-6">
-      <header className="space-y-3">
-        <Badge variant="outline">{view.caseRow.caseReference}</Badge>
-        <h1 className="text-3xl font-semibold">{view.programmeName}</h1>
-        <p className="text-muted-foreground">
-          Current status:{" "}
-          <strong>{view.caseRow.status.replaceAll("_", " ")}</strong>
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Region: {view.intakeRegion}
-        </p>
-      </header>
+    <main className="flex flex-1 flex-col">
+      <PageHero
+        eyebrow={`Case ${caseRow.caseReference}`}
+        icon={ClipboardCheck}
+        title={view.programmeName}
+        description={
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="inline-flex items-center gap-1.5">
+              <MapPin className="text-coral size-4" aria-hidden />
+              {view.intakeRegion}
+            </span>
+            <span>Received {formatCaseDate(caseRow.createdAt)}</span>
+          </span>
+        }
+        actions={
+          <Link href="/org" className={heroSecondaryAction}>
+            <ArrowLeft className="size-4" aria-hidden />
+            Back to all requests
+          </Link>
+        }
+      >
+        <CaseStatusPill status={caseRow.status} className="bg-white" />
+      </PageHero>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Intake summary shared with consent</CardTitle>
-          <CardDescription>
-            Only fields the user consented to should be relied on for contact.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm leading-relaxed text-muted-foreground">
-          {view.intakeSummary ?? "No summary recorded."}
-        </CardContent>
-      </Card>
+      <div className="section-x py-10">
+        <div className="mx-auto w-full max-w-6xl space-y-8">
+          <CaseStatusTracker status={caseRow.status} />
 
-      <OrgCaseUpdateForm
-        caseId={view.caseRow.id}
-        organizationId={membership.organization.id}
-        currentStatus={view.caseRow.status}
-        allowedStatuses={allowed}
-        currentNextAction={view.caseRow.nextAction ?? ""}
-      />
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+            <div className="min-w-0 space-y-8">
+              <section
+                aria-labelledby="shared-heading"
+                className="border-border bg-card rounded-2xl border p-6 shadow-sm"
+              >
+                <header className="flex items-start gap-3">
+                  <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+                    <FileLock2 className="size-5" aria-hidden />
+                  </span>
+                  <div>
+                    <h2
+                      id="shared-heading"
+                      className="font-display text-lg font-semibold"
+                    >
+                      What the person shared with you
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      Only details they consented to share are shown. Use
+                      nothing else to contact them.
+                    </p>
+                  </div>
+                </header>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Audit trail</h2>
-        <ul className="space-y-2">
-          {audit.map((event) => (
-            <li
-              key={event.id}
-              className="rounded-lg border border-border px-3 py-2 text-sm"
-            >
-              <p className="font-medium">{event.action}</p>
-              <p className="text-xs text-muted-foreground">
-                {event.createdAt.toISOString()}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+                {sharedFields.length === 0 ? (
+                  <p className="border-border text-muted-foreground mt-5 rounded-xl border border-dashed p-4 text-sm">
+                    {consent?.withdrawnAt
+                      ? "The person has withdrawn consent. Their details are no longer available."
+                      : "No shared details are available for this request."}
+                  </p>
+                ) : (
+                  <dl className="divide-border mt-5 divide-y">
+                    {sharedFields.map(({ field, label, value }) => (
+                      <div
+                        key={field}
+                        className="grid gap-1 py-3 sm:grid-cols-[160px_1fr] sm:gap-4"
+                      >
+                        <dt className="text-muted-foreground text-sm font-medium">
+                          {label}
+                        </dt>
+                        <dd className="text-sm leading-relaxed">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
 
-      <Button asChild variant="outline">
-        <Link href="/org">Back to organisation dashboard</Link>
-      </Button>
+                {consent ? (
+                  <div className="bg-secondary/50 text-muted-foreground mt-5 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-xl px-4 py-3 text-xs">
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShieldCheck
+                        className="text-primary size-4"
+                        aria-hidden
+                      />
+                      Consent given {formatCaseDate(consent.consentedAt)}
+                    </span>
+                    <span>Reason: {consent.purpose}</span>
+                    <span>Version {consent.consentVersion}</span>
+                  </div>
+                ) : null}
+              </section>
+
+              <section aria-labelledby="activity-heading" className="space-y-4">
+                <h2
+                  id="activity-heading"
+                  className="font-display text-xl font-semibold"
+                >
+                  Activity
+                </h2>
+                <ol className="border-border relative space-y-5 border-l pl-6">
+                  {timeline.map(
+                    ({ id: entryId, at, icon: Icon, title, detail }) => (
+                      <li key={entryId} className="relative">
+                        <span className="border-border bg-card absolute top-0 -left-[37px] flex size-6 items-center justify-center rounded-full border">
+                          <Icon className="text-primary size-3.5" aria-hidden />
+                        </span>
+                        <p className="text-sm font-semibold">{title}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {formatCaseDate(at)}
+                        </p>
+                        {detail ? (
+                          <p className="bg-muted/60 mt-2 rounded-lg px-3 py-2 text-sm leading-relaxed">
+                            {detail}
+                          </p>
+                        ) : null}
+                      </li>
+                    ),
+                  )}
+                </ol>
+              </section>
+            </div>
+
+            <aside className="space-y-6">
+              <section className="border-border bg-card space-y-3 rounded-2xl border p-6 text-sm shadow-sm">
+                <h2 className="font-display text-lg font-semibold">
+                  At a glance
+                </h2>
+                <InfoRow icon={ListTodo} label="Next action">
+                  {caseRow.nextAction ?? "None recorded"}
+                </InfoRow>
+                <InfoRow icon={CalendarClock} label="Follow up by">
+                  {caseRow.followUpDueAt ? (
+                    <span
+                      className={
+                        overdue ? "text-destructive font-semibold" : undefined
+                      }
+                    >
+                      {formatCaseDate(caseRow.followUpDueAt)}
+                      {overdue ? " · overdue" : ""}
+                    </span>
+                  ) : (
+                    "Not set"
+                  )}
+                </InfoRow>
+                {caseRow.statusReason ? (
+                  <InfoRow icon={History} label="Last reason">
+                    {caseRow.statusReason}
+                  </InfoRow>
+                ) : null}
+                {caseRow.outcome ? (
+                  <InfoRow icon={ClipboardCheck} label="Outcome">
+                    {caseRow.outcome}
+                    {caseRow.outcomeConfirmedBy
+                      ? ` (confirmed by ${caseRow.outcomeConfirmedBy})`
+                      : ""}
+                  </InfoRow>
+                ) : null}
+              </section>
+
+              <OrgCaseUpdateForm
+                caseId={caseRow.id}
+                organizationId={membership.organization.id}
+                currentStatus={caseRow.status}
+                allowedStatuses={allowed}
+                currentNextAction={caseRow.nextAction ?? ""}
+              />
+            </aside>
+          </div>
+        </div>
+      </div>
     </main>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-3">
+      <Icon className="text-primary mt-0.5 size-4 shrink-0" aria-hidden />
+      <div>
+        <p className="text-muted-foreground text-xs font-medium">{label}</p>
+        <p>{children}</p>
+      </div>
+    </div>
   );
 }

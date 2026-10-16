@@ -9,7 +9,7 @@ import { DEMO_REGION } from "@/lib/constants";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "New programme",
+  title: "Publish a new support programme",
 };
 
 export default async function NewProgrammePage() {
@@ -23,7 +23,7 @@ export default async function NewProgrammePage() {
   const categories = await listActiveCategories();
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
+    <main className="mx-auto w-full max-w-2xl flex-1 py-10 section-x">
       <ProgrammeForm
         organizationId={membership.organization.id}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}

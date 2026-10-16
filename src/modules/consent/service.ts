@@ -149,6 +149,19 @@ export async function createReferralWithConsent(
   return { consent, caseRow };
 }
 
+export async function getConsentForCase(
+  caseId: string,
+): Promise<ConsentEvent | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(consentEvents)
+    .where(eq(consentEvents.caseId, caseId))
+    .orderBy(desc(consentEvents.consentedAt))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function getActiveConsentForIntake(
   intakeId: string,
 ): Promise<ConsentEvent | null> {
@@ -157,7 +170,10 @@ export async function getActiveConsentForIntake(
     .select()
     .from(consentEvents)
     .where(
-      and(eq(consentEvents.intakeId, intakeId), isNull(consentEvents.withdrawnAt)),
+      and(
+        eq(consentEvents.intakeId, intakeId),
+        isNull(consentEvents.withdrawnAt),
+      ),
     )
     .orderBy(desc(consentEvents.consentedAt))
     .limit(1);

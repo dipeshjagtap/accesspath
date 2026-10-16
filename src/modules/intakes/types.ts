@@ -4,9 +4,13 @@ import { z } from "zod";
 export const intakeInputSchema = z.object({
   displayName: z.string().trim().max(120).optional(),
   askingFor: z.enum(["self", "someone_else"]).default("self"),
-  region: z.string().trim().min(1).max(200),
+  region: z.string().trim().min(1, "Choose a city or region.").max(200),
   travelRange: z.string().trim().max(120).optional(),
-  practicalNeeds: z.string().trim().min(1).max(2000),
+  practicalNeeds: z
+    .string()
+    .trim()
+    .min(1, "Describe the support you are looking for.")
+    .max(2000, "Keep the description under 2000 characters."),
   supportCategorySlug: z
     .string()
     .trim()

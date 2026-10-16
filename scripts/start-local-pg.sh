@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-# Start a local PostgreSQL 14 instance on port 5433 when Docker is unavailable.
+# Start a local PostgreSQL instance (newest installed version) when Docker is unavailable.
+# Port comes from DATABASE_URL in .env.local (default 5433).
 # Also ensures PRD v2 schema + seed exist.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PGDIR="${ROOT}/.pgdata"
-PGBIN="${PGBIN:-/usr/lib/postgresql/14/bin}"
+if [[ -z "${PGBIN:-}" ]]; then
+  PGBIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
+  PGBIN="${PGBIN:-/usr/lib/postgresql/14/bin}"
+fi
 export PATH="${PGBIN}:${PATH}"
 export PGHOST=127.0.0.1
-export PGPORT=5433
+if [[ -z "${PGPORT:-}" && -f "$ROOT/.env.local" ]]; then
+  PGPORT="$(grep -E '^DATABASE_URL=' "$ROOT/.env.local" | sed -nE 's#.*@[^:/]+:([0-9]+)/.*#\1#p' | tail -1)"
+fi
+export PGPORT="${PGPORT:-5433}"
 export PGUSER=accesspath
 # Use the built-in "postgres" DB (CREATE DATABASE may be restricted).
 export PGDATABASE=postgres
@@ -36,8 +43,8 @@ init_cluster() {
 }
 
 start_server() {
-  if pg_isready -h 127.0.0.1 -p 5433 -U accesspath >/dev/null 2>&1; then
-    echo "Postgres already accepting connections on 5433"
+  if pg_isready -h 127.0.0.1 -p "$PGPORT" -U accesspath >/dev/null 2>&1; then
+    echo "Postgres already accepting connections on $PGPORT"
     return 0
   fi
 
@@ -47,19 +54,19 @@ start_server() {
 
   rm -f "$PGDIR/postmaster.pid" "$PGDIR/.s.PGSQL."* 2>/dev/null || true
 
-  if ! pg_ctl -D "$PGDIR" -l "$PGDIR/pg.log" -o "-p 5433" start -w; then
+  if ! pg_ctl -D "$PGDIR" -l "$PGDIR/pg.log" -o "-p $PGPORT" start -w; then
     echo "Start failed — checking log for corruption …" >&2
     if grep -q "could not locate a valid checkpoint record\|invalid resource manager ID\|data directory lock file is invalid" "$PGDIR/pg.log" 2>/dev/null; then
       echo "Corrupt cluster detected; reinitializing …" >&2
       init_cluster
-      pg_ctl -D "$PGDIR" -l "$PGDIR/pg.log" -o "-p 5433" start -w
+      pg_ctl -D "$PGDIR" -l "$PGDIR/pg.log" -o "-p $PGPORT" start -w
     else
       tail -40 "$PGDIR/pg.log" >&2 || true
       exit 1
     fi
   fi
 
-  pg_isready -h 127.0.0.1 -p 5433 -U accesspath
+  pg_isready -h 127.0.0.1 -p "$PGPORT" -U accesspath
 }
 
 ensure_schema_and_seed() {
@@ -84,5 +91,5 @@ start_server
 ensure_schema_and_seed
 
 echo ""
-echo "DATABASE_URL should be: postgresql://accesspath@127.0.0.1:5433/postgres"
+echo "DATABASE_URL should be: postgresql://accesspath@127.0.0.1:$PGPORT/postgres"
 echo "Postgres is ready. Keep this instance running while you develop."

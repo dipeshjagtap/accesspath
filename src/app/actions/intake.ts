@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/modules/auth/session";
+import { AuthError, assertCanSubmitNeeds } from "@/modules/auth/permissions";
+import type { AuthUser } from "@/modules/auth/session";
 import {
   createIntake,
   getIntakeById,
@@ -18,13 +19,20 @@ export type ActionState = {
   ok: boolean;
   message?: string;
   fieldErrors?: Record<string, string[]>;
+  values?: Record<string, string>;
 };
 
 export async function submitIntakeAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const user = await getCurrentUser();
+  let user: AuthUser | null;
+  try {
+    user = await assertCanSubmitNeeds();
+  } catch (error) {
+    if (error instanceof AuthError) return { ok: false, message: error.message };
+    throw error;
+  }
 
   const raw = {
     displayName: emptyToUndefined(formData.get("displayName")),
@@ -55,6 +63,11 @@ export async function submitIntakeAction(
         string,
         string[]
       >,
+      values: Object.fromEntries(
+        Object.entries(raw).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      ),
     };
   }
 
@@ -66,7 +79,13 @@ export async function confirmSummaryAndGeneratePlanAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const user = await getCurrentUser();
+  let user: AuthUser | null;
+  try {
+    user = await assertCanSubmitNeeds();
+  } catch (error) {
+    if (error instanceof AuthError) return { ok: false, message: error.message };
+    throw error;
+  }
   const parsed = confirmedSummarySchema.safeParse({
     intakeId: String(formData.get("intakeId") || ""),
     confirmedSummary: String(formData.get("confirmedSummary") || ""),

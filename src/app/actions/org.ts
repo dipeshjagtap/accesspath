@@ -8,7 +8,8 @@ import { assistancePrograms } from "@/lib/db/schema";
 import { AuthError, requireOrgMember } from "@/modules/auth/permissions";
 import { updateCaseStatus } from "@/modules/cases/service";
 import { updateCaseStatusSchema } from "@/modules/cases/types";
-import { eq } from "drizzle-orm";
+import { assertProgrammeOwnedByOrg } from "@/modules/programmes/repository";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 export type OrgActionState = {
@@ -94,7 +95,9 @@ export async function upsertProgrammeAction(
       categoryId: String(formData.get("categoryId") || ""),
       regions: String(formData.get("regions") || ""),
       requiredDocuments: String(formData.get("requiredDocuments") || ""),
-      availabilityStatus: String(formData.get("availabilityStatus") || "unknown"),
+      availabilityStatus: String(
+        formData.get("availabilityStatus") || "unknown",
+      ),
       officialUrl: String(formData.get("officialUrl") || ""),
       evidenceUrl: String(formData.get("evidenceUrl") || ""),
       publish: formData.get("publish") === "on",
@@ -113,6 +116,10 @@ export async function upsertProgrammeAction(
       .map((r) => r.trim())
       .filter(Boolean);
 
+    const existing = programmeId
+      ? await assertProgrammeOwnedByOrg(programmeId, membership.organization.id)
+      : null;
+
     const db = getDb();
     const values = {
       organizationId: membership.organization.id,
@@ -127,16 +134,23 @@ export async function upsertProgrammeAction(
       evidenceUrl: parsed.data.evidenceUrl || null,
       verificationStatus: "needs_review" as const,
       sourceNotes: "Organisation-submitted programme (demo). Pending review.",
-      publishedAt: parsed.data.publish ? new Date() : null,
+      publishedAt: parsed.data.publish
+        ? (existing?.publishedAt ?? new Date())
+        : null,
       isFictionalDemo: "true",
       updatedAt: new Date(),
     };
 
-    if (programmeId) {
+    if (existing) {
       await db
         .update(assistancePrograms)
         .set(values)
-        .where(eq(assistancePrograms.id, programmeId));
+        .where(
+          and(
+            eq(assistancePrograms.id, existing.id),
+            eq(assistancePrograms.organizationId, membership.organization.id),
+          ),
+        );
     } else {
       await db.insert(assistancePrograms).values(values);
     }

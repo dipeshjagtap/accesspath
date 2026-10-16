@@ -2,7 +2,12 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import {
+  auditEvents,
+  organizationMembers,
+  organizations,
+  users,
+} from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/modules/auth/password";
 import {
   clearSessionCookie,
@@ -61,6 +66,109 @@ export async function registerUser(input: RegisterInput): Promise<AuthUser> {
   if (!row) {
     throw new Error("Failed to create account");
   }
+
+  const token = await createSession(row.id);
+  await setSessionCookie(token);
+  return toAuthUser(row);
+}
+
+export const ORGANIZATION_TYPES = [
+  "ngo",
+  "hospital",
+  "clinic",
+  "public_agency",
+  "service_provider",
+  "rehabilitation_provider",
+  "disability_support",
+  "foundation",
+  "other",
+] as const;
+
+export const registerOrganizationSchema = registerSchema.extend({
+  organizationName: z.string().trim().min(2).max(200),
+  organizationType: z.enum(ORGANIZATION_TYPES),
+  contactEmail: z.string().trim().email().max(200).optional(),
+  registrationType: z.string().trim().max(120).optional(),
+  registrationNumber: z.string().trim().max(120).optional(),
+  regionsServed: z.string().trim().max(500).optional(),
+});
+
+export type RegisterOrganizationInput = z.infer<
+  typeof registerOrganizationSchema
+>;
+
+/**
+ * Creates the account, a pending organisation, and makes the account its
+ * org_admin in one transaction. Platform admins must verify the organisation
+ * before its programmes are matched to users.
+ */
+export async function registerOrganization(
+  input: RegisterOrganizationInput,
+): Promise<AuthUser> {
+  const db = getDb();
+  const email = input.email.toLowerCase();
+  const existing = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (existing[0]) {
+    throw new Error("An account with this email already exists");
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  const row = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email,
+        passwordHash,
+        displayName: input.displayName,
+        role: "user",
+      })
+      .returning();
+    if (!user) {
+      throw new Error("Failed to create account");
+    }
+
+    const [org] = await tx
+      .insert(organizations)
+      .values({
+        name: input.organizationName,
+        organizationType: input.organizationType,
+        contactEmail: input.contactEmail || email,
+        registrationType: input.registrationType || null,
+        registrationNumber: input.registrationNumber || null,
+        regionsServed: (input.regionsServed || "")
+          .split(",")
+          .map((r) => r.trim())
+          .filter(Boolean),
+        verificationStatus: "pending",
+        isFictionalDemo: "false",
+      })
+      .returning();
+    if (!org) {
+      throw new Error("Failed to create organisation");
+    }
+
+    await tx.insert(organizationMembers).values({
+      organizationId: org.id,
+      userId: user.id,
+      role: "org_admin",
+    });
+
+    await tx.insert(auditEvents).values({
+      actorUserId: user.id,
+      organizationId: org.id,
+      entityType: "organization",
+      entityId: org.id,
+      action: "organization_registered",
+      metadata: { organizationType: org.organizationType },
+    });
+
+    return user;
+  });
 
   const token = await createSession(row.id);
   await setSessionCookie(token);

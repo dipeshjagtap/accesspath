@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { VerificationBadge } from "@/components/verification-badge";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +17,23 @@ import { getAssistanceProgramById } from "@/modules/resources/repository";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Assistance program",
-};
+const isUuid = (value: string) => z.string().uuid().safeParse(value).success;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const program = isUuid(id) ? await getAssistanceProgramById(id) : null;
+  if (!program) {
+    return { title: "Support programme not found" };
+  }
+  return {
+    title: `${program.name} – support programme`,
+    description: program.purpose,
+  };
+}
 
 export default async function ProgramDetailPage({
   params,
@@ -26,11 +41,11 @@ export default async function ProgramDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const program = await getAssistanceProgramById(id);
+  const program = isUuid(id) ? await getAssistanceProgramById(id) : null;
   if (!program) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main className="mx-auto w-full max-w-3xl flex-1 py-10 section-x">
       <Button asChild variant="ghost" className="mb-4 px-0">
         <Link href="/resources">← Back to directory</Link>
       </Button>

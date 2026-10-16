@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit push",
     "db:seed": "tsx --env-file=.env.local src/lib/db/seed.ts",
     "db:studio": "drizzle-kit studio",
+    "user:set-role": "tsx --env-file=.env.local scripts/set-platform-role.ts",
     "db:up": "bash scripts/start-local-pg.sh",
     "demo:reset": "npm run db:push && npm run db:seed",
     "typecheck": "tsc --noEmit",

@@ -159,6 +159,17 @@ export async function listProgrammesForOrganization(
   );
 }
 
+/** Headline counts for the landing page. */
+export async function getPlatformStats() {
+  const db = getDb();
+  const [programmes, verifiedOrgs, categories] = await Promise.all([
+    db.$count(assistancePrograms, isNotNull(assistancePrograms.publishedAt)),
+    db.$count(organizations, eq(organizations.verificationStatus, "verified")),
+    db.$count(supportCategories, eq(supportCategories.isActive, "true")),
+  ]);
+  return { programmes, verifiedOrgs, categories };
+}
+
 export async function listActiveCategories() {
   const db = getDb();
   return db
@@ -210,7 +221,6 @@ export async function canReceiveLiveRequests(
   return { ok: true };
 }
 
-/** Unused import guard helpers — keep API surface clean for org CRUD later. */
 export async function assertProgrammeOwnedByOrg(
   programmeId: string,
   organizationId: string,

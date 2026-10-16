@@ -1,8 +1,9 @@
+import { ArrowRight, ClipboardCheck, Search, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ResourceCard } from "@/components/resource-card";
-import { Button } from "@/components/ui/button";
+import { heroPrimaryAction, PageHero } from "@/components/page-hero";
 import { dbConnectionHint } from "@/lib/db";
 import {
   listPrimaryAssistancePrograms,
@@ -12,7 +13,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Verified resources",
+  title: "Verified support programmes directory",
+  description:
+    "Browse published education, essential-needs, and disability and health support programmes from organisations reviewed by AccessPath admins.",
 };
 
 export default async function ResourcesPage() {
@@ -30,65 +33,79 @@ export default async function ResourcesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-4 py-10 sm:px-6">
-      <header className="space-y-3">
-        <h1 className="text-3xl font-semibold sm:text-4xl">
-          Verified resource directory
-        </h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Only curated records with verification status are shown here. Expired
-          and unverified listings are excluded from this primary list. Hackathon
-          entries are fictional demo data.
-        </p>
-        <Button asChild>
-          <Link href="/intake">Start with your needs</Link>
-        </Button>
-      </header>
+    <main className="flex flex-1 flex-col">
+      <PageHero
+        eyebrow="Verified directory"
+        icon={ShieldCheck}
+        title="Verified resource directory"
+        description="Only curated records with a current verification status appear here. Expired and unverified listings are excluded. Hackathon entries are fictional demo data."
+        actions={
+          <Link href="/intake" className={heroPrimaryAction}>
+            <Search className="size-4" aria-hidden="true" />
+            Start with your needs
+          </Link>
+        }
+      />
+      <div className="section-x w-full flex-1 space-y-10 py-10">
+        {dbError ? (
+          <p
+            role="alert"
+            className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border px-4 py-3 text-sm"
+          >
+            {dbError}
+          </p>
+        ) : null}
 
-      {dbError ? (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+        <section
+          className="grid gap-4 md:grid-cols-2"
+          aria-label="Providers and services"
         >
-          {dbError}
-        </p>
-      ) : null}
-
-      <section className="grid gap-4 md:grid-cols-2" aria-label="Providers and services">
-        {resources.map((resource) => (
-          <ResourceCard key={resource.id} resource={resource} />
-        ))}
-      </section>
-
-      <section className="space-y-4" aria-labelledby="programs-dir-heading">
-        <h2 id="programs-dir-heading" className="text-2xl font-semibold">
-          Assistance programs
-        </h2>
-        <ul className="grid gap-4 md:grid-cols-2">
-          {programs.map((program) => (
-            <li
-              key={program.id}
-              className="rounded-xl border border-border bg-card p-5"
-            >
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-primary">
-                {program.verificationStatus.replaceAll("_", " ")}
-              </p>
-              <h3 className="text-lg font-semibold">
-                <Link
-                  href={`/programs/${program.id}`}
-                  className="underline-offset-2 hover:underline"
-                >
-                  {program.name}
-                </Link>
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {program.purpose}
-              </p>
-              <p className="mt-2 text-sm">{program.eligibilityDisclaimer}</p>
-            </li>
+          {resources.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
           ))}
-        </ul>
-      </section>
+        </section>
+
+        <section className="space-y-4" aria-labelledby="programs-dir-heading">
+          <h2 id="programs-dir-heading" className="text-2xl font-semibold">
+            Assistance programs
+          </h2>
+          <ul className="grid gap-4 md:grid-cols-2">
+            {programs.map((program) => (
+              <li
+                key={program.id}
+                className="lift border-border bg-card group relative flex gap-4 rounded-2xl border p-5 shadow-sm"
+              >
+                <span className="bg-secondary text-primary group-hover:bg-primary flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors group-hover:text-white">
+                  <ClipboardCheck className="size-6" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-primary mb-1 text-xs font-semibold tracking-wide uppercase">
+                    {program.verificationStatus.replaceAll("_", " ")}
+                  </p>
+                  <h3 className="text-brand-dark text-lg font-bold">
+                    <Link
+                      href={`/programs/${program.id}`}
+                      className="after:absolute after:inset-0 after:rounded-2xl"
+                    >
+                      {program.name}
+                    </Link>
+                  </h3>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    {program.purpose}
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {program.eligibilityDisclaimer}
+                  </p>
+                  <span className="text-coral mt-3 inline-flex items-center gap-1 text-sm font-semibold">
+                    View details
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </main>
   );
 }

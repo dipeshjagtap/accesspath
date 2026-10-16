@@ -33,7 +33,7 @@ export function SummaryReviewForm({
   );
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6">
+    <div className="mx-auto w-full max-w-2xl py-10 section-x">
       <ProgressSteps current={2} />
       <Card className={pending ? "ring-2 ring-primary/30" : undefined}>
         <CardHeader>

@@ -95,6 +95,44 @@ export async function listMembershipsForUser(userId: string) {
     .where(eq(organizationMembers.userId, userId));
 }
 
+export type AccountKind = "guest" | "individual" | "organisation" | "admin";
+
+export async function accountKindFor(
+  user: AuthUser | null,
+): Promise<AccountKind> {
+  if (!user) return "guest";
+  if (user.role === "admin") return "admin";
+  const memberships = await listMembershipsForUser(user.id);
+  return memberships.length > 0 ? "organisation" : "individual";
+}
+
+/** Support needs come from people seeking help; staff and admin accounts only respond to them. */
+export function canSubmitNeeds(kind: AccountKind): boolean {
+  return kind === "guest" || kind === "individual";
+}
+
+export async function assertCanSubmitNeeds(): Promise<AuthUser | null> {
+  const user = await getCurrentUser();
+  if (!canSubmitNeeds(await accountKindFor(user))) {
+    throw new AuthError(
+      "Organisation and admin accounts cannot submit support needs. Use a personal account instead.",
+    );
+  }
+  return user;
+}
+
+const HOME_PATH: Record<AccountKind, string> = {
+  guest: "/",
+  individual: "/dashboard",
+  organisation: "/org",
+  admin: "/admin",
+};
+
+/** Where a signed-in user lands: platform admin, then organisation, then personal dashboard. */
+export async function homePathForUser(user: AuthUser): Promise<string> {
+  return HOME_PATH[await accountKindFor(user)];
+}
+
 export async function requireAnyOrgMember(
   allowedRoles?: Array<"org_admin" | "caseworker" | "viewer">,
 ): Promise<OrgMembership> {

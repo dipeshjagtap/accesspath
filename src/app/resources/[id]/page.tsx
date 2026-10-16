@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 
 import { VerificationBadge } from "@/components/verification-badge";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +17,23 @@ import { getResourceById } from "@/modules/resources/repository";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Resource detail",
-};
+const isUuid = (value: string) => z.string().uuid().safeParse(value).success;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const resource = isUuid(id) ? await getResourceById(id) : null;
+  if (!resource) {
+    return { title: "Support resource not found" };
+  }
+  return {
+    title: `${resource.name} – support resource in ${resource.region}`,
+    description: resource.description,
+  };
+}
 
 export default async function ResourceDetailPage({
   params,
@@ -26,7 +41,7 @@ export default async function ResourceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const resource = await getResourceById(id);
+  const resource = isUuid(id) ? await getResourceById(id) : null;
   if (!resource) notFound();
 
   const isPrimary =
@@ -34,7 +49,7 @@ export default async function ResourceDetailPage({
     resource.verificationStatus === "needs_review";
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main className="mx-auto w-full max-w-3xl flex-1 py-10 section-x">
       <Button asChild variant="ghost" className="mb-4 px-0">
         <Link href="/resources">← Back to directory</Link>
       </Button>
