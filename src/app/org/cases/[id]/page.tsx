@@ -20,6 +20,11 @@ import { PageHero, heroSecondaryAction } from "@/components/page-hero";
 import { requireAnyOrgMember } from "@/modules/auth/permissions";
 import { caseStatusLabel, formatCaseDate } from "@/modules/cases/labels";
 import {
+  isAwaitingUserConfirmation,
+  RECEIPT_ANSWER_META,
+  type ReceiptAnswer,
+} from "@/modules/cases/receipt";
+import {
   getCaseForOrganization,
   isCaseOverdue,
   listAuditForCase,
@@ -114,6 +119,16 @@ export default async function OrgCasePage({
               : `Status changed to ${caseStatusLabel(to).toLowerCase()}`,
           detail:
             typeof meta.statusReason === "string" ? meta.statusReason : null,
+        };
+      }
+      if (event.action === "user_confirmed_receipt") {
+        const answer = String(meta.answer ?? "") as ReceiptAnswer;
+        return {
+          id: event.id,
+          at: event.createdAt,
+          icon: ClipboardCheck,
+          title: RECEIPT_ANSWER_META[answer]?.orgLabel ?? "Person replied",
+          detail: typeof meta.note === "string" ? meta.note : null,
         };
       }
       return {
@@ -292,6 +307,26 @@ export default async function OrgCasePage({
                       : ""}
                   </InfoRow>
                 ) : null}
+                <InfoRow icon={ClipboardCheck} label="Person's confirmation">
+                  {caseRow.userConfirmation ? (
+                    <span
+                      className={
+                        caseRow.userConfirmation === "received"
+                          ? "font-semibold text-emerald-700"
+                          : "text-destructive font-semibold"
+                      }
+                    >
+                      {RECEIPT_ANSWER_META[caseRow.userConfirmation].orgLabel}
+                      {caseRow.userConfirmationNote
+                        ? `: “${caseRow.userConfirmationNote}”`
+                        : ""}
+                    </span>
+                  ) : isAwaitingUserConfirmation(caseRow) ? (
+                    "Waiting for the person to confirm"
+                  ) : (
+                    "Asked once support is marked delivered"
+                  )}
+                </InfoRow>
               </section>
 
               <OrgCaseUpdateForm

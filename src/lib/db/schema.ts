@@ -16,12 +16,10 @@ import {
  */
 
 /** Listing-level verification (resources / programme evidence quality). */
-export const listingVerificationStatusEnum = pgEnum("listing_verification_status", [
-  "verified",
-  "needs_review",
-  "expired",
-  "unverified",
-]);
+export const listingVerificationStatusEnum = pgEnum(
+  "listing_verification_status",
+  ["verified", "needs_review", "expired", "unverified"],
+);
 
 /** Organisation provider-verification workflow (PRD v2). */
 export const orgVerificationStatusEnum = pgEnum("org_verification_status", [
@@ -103,6 +101,13 @@ export const caseStatusEnum = pgEnum("case_status", [
   "not_delivered",
   "unresolved",
   "closed",
+]);
+
+/** The person's own answer to "did you receive this support?". */
+export const receiptConfirmationEnum = pgEnum("receipt_confirmation", [
+  "received",
+  "partly_received",
+  "not_received",
 ]);
 
 export const noteVisibilityEnum = pgEnum("note_visibility", [
@@ -370,9 +375,12 @@ export const checklistItems = pgTable(
       .references(() => plans.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     description: text("description").notNull(),
-    sourceResourceId: uuid("source_resource_id").references(() => resources.id, {
-      onDelete: "set null",
-    }),
+    sourceResourceId: uuid("source_resource_id").references(
+      () => resources.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     sourceProgramId: uuid("source_program_id").references(
       () => assistancePrograms.id,
       { onDelete: "set null" },
@@ -417,6 +425,11 @@ export const cases = pgTable(
     lastUserNotifiedAt: timestamp("last_user_notified_at", {
       withTimezone: true,
     }),
+    /** Last time the person opened this case; updates after it are unread. */
+    userSeenAt: timestamp("user_seen_at", { withTimezone: true }),
+    userConfirmation: receiptConfirmationEnum("user_confirmation"),
+    userConfirmationNote: text("user_confirmation_note"),
+    userConfirmedAt: timestamp("user_confirmed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

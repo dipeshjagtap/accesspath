@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus } from "lucide-react";
+import { BellDot, LayoutDashboard, PackageCheck, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/card";
 import { homePathForUser } from "@/modules/auth/permissions";
 import { getCurrentUser } from "@/modules/auth/session";
+import { caseStatusLabel } from "@/modules/cases/labels";
+import {
+  hasUnreadUpdate,
+  isAwaitingUserConfirmation,
+} from "@/modules/cases/receipt";
 import { listCasesForUser } from "@/modules/cases/service";
 
 export const dynamic = "force-dynamic";
@@ -66,32 +71,70 @@ export default async function UserDashboardPage() {
             </Card>
           ) : (
             <ul className="space-y-3">
-              {cases.map(({ caseRow, organizationName, programmeName }) => (
-                <li key={caseRow.id}>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <CardTitle className="text-base">
-                          {caseRow.caseReference}
-                        </CardTitle>
-                        <Badge variant="outline">
-                          {caseRow.status.replaceAll("_", " ")}
-                        </Badge>
-                      </div>
-                      <CardDescription>
-                        {programmeName} · {organizationName}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/dashboard/cases/${caseRow.id}`}>
-                          View timeline
-                        </Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </li>
-              ))}
+              {cases.map(({ caseRow, organizationName, programmeName }) => {
+                const awaiting = isAwaitingUserConfirmation(caseRow);
+                const unread = hasUnreadUpdate(caseRow);
+                return (
+                  <li key={caseRow.id}>
+                    <Card
+                      className={
+                        awaiting
+                          ? "border-primary border-2"
+                          : unread
+                            ? "border-primary/60"
+                            : undefined
+                      }
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <CardTitle className="text-base">
+                            {caseRow.caseReference}
+                          </CardTitle>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {unread && !awaiting ? (
+                              <Badge className="gap-1">
+                                <BellDot className="size-3.5" aria-hidden />
+                                New update
+                              </Badge>
+                            ) : null}
+                            <Badge variant="outline">
+                              {caseStatusLabel(caseRow.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                        <CardDescription>
+                          {programmeName} · {organizationName}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {awaiting ? (
+                          <p className="text-sm">
+                            <strong>{organizationName}</strong> says this
+                            support has been delivered. Please confirm whether
+                            you received it.
+                          </p>
+                        ) : null}
+                        {awaiting ? (
+                          <Button asChild size="sm">
+                            <Link
+                              href={`/dashboard/cases/${caseRow.id}#confirm-receipt`}
+                            >
+                              <PackageCheck className="size-4" aria-hidden />
+                              Confirm what you received
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/dashboard/cases/${caseRow.id}`}>
+                              View timeline
+                            </Link>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

@@ -7,6 +7,8 @@ import { config } from "dotenv";
 
 config({ path: ".env.local" });
 
+import { isNotNull } from "drizzle-orm";
+
 import { getDb, getSql } from "../src/lib/db";
 import { assistancePrograms, resources } from "../src/lib/db/schema";
 
@@ -14,7 +16,12 @@ const DEMO_HOSTS = new Set(["example.com", "www.example.com"]);
 
 async function checkUrl(
   url: string,
-): Promise<{ ok: boolean; status: number | null; note?: string; error?: string }> {
+): Promise<{
+  ok: boolean;
+  status: number | null;
+  note?: string;
+  error?: string;
+}> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -56,7 +63,11 @@ async function main() {
   const db = getDb();
   const [resourceRows, programRows] = await Promise.all([
     db.select().from(resources),
-    db.select().from(assistancePrograms),
+    // Only published programmes are shown to people, so only they need a source.
+    db
+      .select()
+      .from(assistancePrograms)
+      .where(isNotNull(assistancePrograms.publishedAt)),
   ]);
 
   const targets: Array<{ kind: string; name: string; url: string | null }> = [

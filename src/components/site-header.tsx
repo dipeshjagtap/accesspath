@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { listMembershipsForUser } from "@/modules/auth/permissions";
 import { describeRoles } from "@/modules/auth/roles";
 import { getCurrentUser } from "@/modules/auth/session";
+import { countCasesNeedingUserAttention } from "@/modules/cases/service";
 
 const navLinkClass =
   "rounded-md px-3 py-2 text-sm font-medium text-white/85 transition-colors hover:bg-white/10 hover:text-white";
@@ -26,13 +27,21 @@ export async function SiteHeader() {
     : null;
 
   const canDescribeNeed = !isOrg && !isAdmin;
+  const attentionCount =
+    user && canDescribeNeed ? await countCasesNeedingUserAttention(user.id) : 0;
 
   const links = [
     { href: "/resources", label: "Programmes" },
     ...(user
       ? [
           ...(canDescribeNeed
-            ? [{ href: "/dashboard", label: "My requests" }]
+            ? [
+                {
+                  href: "/dashboard",
+                  label: "My requests",
+                  count: attentionCount,
+                },
+              ]
             : []),
           ...(isOrg ? [{ href: "/org", label: "Organisation" }] : []),
           ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
@@ -43,6 +52,21 @@ export async function SiteHeader() {
         ]),
     { href: "/privacy", label: "Privacy" },
   ];
+
+  const linkContent = (link: { label: string; count?: number }) =>
+    link.count ? (
+      <span className="inline-flex items-center gap-1.5">
+        {link.label}
+        <span
+          className="bg-coral inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white"
+          aria-label={`${link.count} ${link.count === 1 ? "request needs" : "requests need"} your attention`}
+        >
+          {link.count}
+        </span>
+      </span>
+    ) : (
+      link.label
+    );
 
   const roleBadge = primaryRole ? (
     <span
@@ -124,7 +148,7 @@ export async function SiteHeader() {
           >
             {links.map((link) => (
               <Link key={link.href} href={link.href} className={navLinkClass}>
-                {link.label}
+                {linkContent(link)}
               </Link>
             ))}
           </nav>
@@ -148,7 +172,7 @@ export async function SiteHeader() {
                     href={link.href}
                     className={navLinkClass}
                   >
-                    {link.label}
+                    {linkContent(link)}
                   </Link>
                 ))}
               </nav>

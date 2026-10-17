@@ -16,6 +16,13 @@ import {
   type CaseStatus,
 } from "@/modules/cases/transitions";
 import {
+  AWAITING_RECEIPT_STATUSES,
+  isAwaitingUserConfirmation,
+  needsUserAttention,
+  statusAfterReceipt,
+  type ConfirmReceiptInput,
+} from "@/modules/cases/receipt";
+import {
   caseStatusValues,
   type UpdateCaseStatusInput,
 } from "@/modules/cases/types";
@@ -180,6 +187,13 @@ export async function updateCaseStatus(
   );
 
   const closed = isClosedStatus(input.status as CaseStatus);
+  const statusChanged = existing.caseRow.status !== input.status;
+  const hasUserNote = Boolean(input.userVisibleNote?.trim());
+  // A fresh delivery claim needs a fresh answer from the person.
+  const resetReceipt =
+    statusChanged &&
+    AWAITING_RECEIPT_STATUSES.includes(input.status as CaseStatus);
+  const now = new Date();
 
   const db = getDb();
   const [updated] = await db
@@ -201,8 +215,19 @@ export async function updateCaseStatus(
           : input.followUpDueAt
             ? new Date(input.followUpDueAt)
             : null,
-      updatedAt: new Date(),
-      closedAt: closed ? new Date() : null,
+      updatedAt: now,
+      closedAt: closed ? now : null,
+      lastUserNotifiedAt:
+        statusChanged || hasUserNote
+          ? now
+          : existing.caseRow.lastUserNotifiedAt,
+      ...(resetReceipt
+        ? {
+            userConfirmation: null,
+            userConfirmationNote: null,
+            userConfirmedAt: null,
+          }
+        : {}),
     })
     .where(eq(cases.id, input.caseId))
     .returning();
@@ -239,13 +264,84 @@ export async function updateCaseStatus(
   return updated;
 }
 
+/**
+ * The person confirms (or disputes) that support actually reached them.
+ * Only allowed after the organisation has recorded a delivery.
+ */
+export async function confirmCaseReceipt(
+  input: ConfirmReceiptInput,
+  userId: string,
+): Promise<Case> {
+  const existing = await getCaseForUser(input.caseId, userId);
+  if (!existing) {
+    throw new Error("Request not found");
+  }
+  if (!isAwaitingUserConfirmation(existing.caseRow)) {
+    throw new Error("This request is not waiting for your confirmation.");
+  }
+
+  const from = existing.caseRow.status as CaseStatus;
+  const to = statusAfterReceipt(input.answer, from);
+  const now = new Date();
+  const note = input.note?.trim() || null;
+
+  const db = getDb();
+  const [updated] = await db
+    .update(cases)
+    .set({
+      status: to,
+      userConfirmation: input.answer,
+      userConfirmationNote: note,
+      userConfirmedAt: now,
+      userSeenAt: now,
+      updatedAt: now,
+      closedAt: input.answer === "received" ? now : null,
+    })
+    .where(eq(cases.id, input.caseId))
+    .returning();
+
+  if (!updated) {
+    throw new Error("Failed to record your confirmation");
+  }
+
+  await db.insert(auditEvents).values({
+    actorUserId: userId,
+    organizationId: updated.organizationId,
+    entityType: "case",
+    entityId: updated.id,
+    action: "user_confirmed_receipt",
+    metadata: { answer: input.answer, note, from, to },
+  });
+
+  return updated;
+}
+
+export async function markCaseSeenByUser(caseId: string, userId: string) {
+  const view = await getCaseForUser(caseId, userId);
+  if (!view) return;
+  await getDb()
+    .update(cases)
+    .set({ userSeenAt: new Date() })
+    .where(eq(cases.id, caseId));
+}
+
+export async function countCasesNeedingUserAttention(
+  userId: string,
+): Promise<number> {
+  const rows = await listCasesForUser(userId);
+  return rows.filter((row) => needsUserAttention(row.caseRow)).length;
+}
+
 export async function listUserVisibleNotes(caseId: string) {
   const db = getDb();
   return db
     .select()
     .from(caseNotes)
     .where(
-      and(eq(caseNotes.caseId, caseId), eq(caseNotes.visibility, "user_visible")),
+      and(
+        eq(caseNotes.caseId, caseId),
+        eq(caseNotes.visibility, "user_visible"),
+      ),
     )
     .orderBy(desc(caseNotes.createdAt));
 }
