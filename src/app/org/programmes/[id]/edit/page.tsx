@@ -1,7 +1,10 @@
+import { ArrowLeft, Pencil } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ProgrammeForm } from "@/components/programme-form";
+import { heroSecondaryAction, PageHero } from "@/components/page-hero";
 import { DEMO_REGION } from "@/lib/constants";
 import { requireAnyOrgMember } from "@/modules/auth/permissions";
 import {
@@ -43,25 +46,41 @@ export default async function EditProgrammePage({
   const categories = await listActiveCategories();
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 py-10 section-x">
-      <ProgrammeForm
-        organizationId={membership.organization.id}
-        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-        defaultRegion={DEMO_REGION}
-        programme={{
-          id: programme.id,
-          name: programme.name,
-          categoryId: programme.categoryId,
-          purpose: programme.purpose,
-          description: programme.description,
-          regions: programme.regions,
-          requiredDocuments: programme.requiredDocuments,
-          availabilityStatus: programme.availabilityStatus,
-          officialUrl: programme.officialUrl,
-          evidenceUrl: programme.evidenceUrl,
-          isPublished: programme.publishedAt != null,
-        }}
+    <main className="flex flex-1 flex-col">
+      <PageHero
+        eyebrow="Organisation workspace"
+        icon={Pencil}
+        title="Edit programme"
+        description={programme.name}
+        actions={
+          <Link href="/org/programmes" className={heroSecondaryAction}>
+            <ArrowLeft className="size-4" aria-hidden />
+            Back to programmes
+          </Link>
+        }
       />
+      <div className="section-x py-10">
+        <div className="mx-auto w-full max-w-4xl">
+          <ProgrammeForm
+            organizationId={membership.organization.id}
+            categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+            defaultRegion={DEMO_REGION}
+            programme={{
+              id: programme.id,
+              name: programme.name,
+              categoryId: programme.categoryId,
+              purpose: programme.purpose,
+              description: programme.description,
+              regions: programme.regions,
+              requiredDocuments: programme.requiredDocuments,
+              availabilityStatus: programme.availabilityStatus,
+              officialUrl: programme.officialUrl,
+              evidenceUrl: programme.evidenceUrl,
+              isPublished: programme.publishedAt != null,
+            }}
+          />
+        </div>
+      </div>
     </main>
   );
 }

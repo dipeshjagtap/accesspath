@@ -1,19 +1,11 @@
-import { Users } from "lucide-react";
+import { ArrowLeft, Mail, Shield, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AddOrgMemberForm, OrgMemberRow } from "@/components/org-member-forms";
-import { PageHero } from "@/components/page-hero";
+import { heroSecondaryAction, PageHero } from "@/components/page-hero";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { requireAnyOrgMember } from "@/modules/auth/permissions";
 import { ORG_ROLE_LABELS } from "@/modules/auth/roles";
 import { listOrgMembers } from "@/modules/organizations/repository";
@@ -22,6 +14,12 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Organisation members and roles",
+};
+
+const ROLE_HINT: Record<string, string> = {
+  org_admin: "Manages programmes, members and cases",
+  caseworker: "Handles incoming support requests",
+  viewer: "Read-only access to the organisation workspace",
 };
 
 export default async function OrgMembersPage() {
@@ -44,54 +42,105 @@ export default async function OrgMembersPage() {
       <PageHero
         eyebrow="Organisation workspace"
         icon={Users}
-        title={`Members of ${membership.organization.name}`}
-        description="Organisation admins manage programmes and members. Caseworkers handle incoming requests. Viewers have read-only access."
+        title="Team members"
+        description={`${membership.organization.name} · ${members.length} ${members.length === 1 ? "person" : "people"} with access.`}
+        actions={
+          <Link href="/org" className={heroSecondaryAction}>
+            <ArrowLeft className="size-4" aria-hidden />
+            Back to organisation
+          </Link>
+        }
       />
-      <div className="section-x w-full flex-1 space-y-8 py-10">
-        {canManage ? (
-          <section className="space-y-3">
-            <h2 className="text-xl font-semibold">Add a member</h2>
-            <AddOrgMemberForm organizationId={membership.organization.id} />
-          </section>
-        ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Members ({members.length})</h2>
-          <ul className="space-y-3">
-            {members.map(({ user, role, membershipId }) => (
-              <li key={membershipId}>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="text-base">
-                        {user.displayName ?? user.email}
-                      </CardTitle>
-                      <Badge>{ORG_ROLE_LABELS[role]}</Badge>
-                      {user.id === membership.user.id ? (
-                        <Badge variant="outline">You</Badge>
+      <div className="section-x py-10">
+        <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="min-w-0 space-y-8">
+            {canManage ? (
+              <AddOrgMemberForm organizationId={membership.organization.id} />
+            ) : null}
+
+            <section aria-labelledby="members-heading" className="space-y-4">
+              <h2
+                id="members-heading"
+                className="font-display text-xl font-semibold"
+              >
+                People on this team ({members.length})
+              </h2>
+              <ul className="grid gap-3">
+                {members.map(({ user, role, membershipId }) => {
+                  const isSelf = user.id === membership.user.id;
+                  return (
+                    <li
+                      key={membershipId}
+                      className="border-border bg-card rounded-2xl border p-5 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-brand-dark text-base font-semibold">
+                              {user.displayName ?? user.email}
+                            </h3>
+                            <Badge>{ORG_ROLE_LABELS[role]}</Badge>
+                            {isSelf ? (
+                              <Badge variant="outline">You</Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
+                            <Mail className="size-3.5" aria-hidden />
+                            {user.email}
+                          </p>
+                          <p className="text-muted-foreground text-xs">
+                            {ROLE_HINT[role]}
+                          </p>
+                        </div>
+                      </div>
+                      {canManage ? (
+                        <OrgMemberRow
+                          organizationId={membership.organization.id}
+                          membershipId={membershipId}
+                          currentRole={role}
+                          isSelf={isSelf}
+                        />
                       ) : null}
-                    </div>
-                    <CardDescription>{user.email}</CardDescription>
-                  </CardHeader>
-                  {canManage ? (
-                    <CardContent>
-                      <OrgMemberRow
-                        organizationId={membership.organization.id}
-                        membershipId={membershipId}
-                        currentRole={role}
-                        isSelf={user.id === membership.user.id}
-                      />
-                    </CardContent>
-                  ) : null}
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </section>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </div>
 
-        <Button asChild variant="outline">
-          <Link href="/org">Back to organisation</Link>
-        </Button>
+          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <div className="bg-brand-deep rounded-2xl p-6 text-white">
+              <h2 className="font-display flex items-center gap-2 text-lg font-semibold">
+                <Shield className="text-coral size-5" aria-hidden />
+                Roles at a glance
+              </h2>
+              <ul className="mt-4 space-y-3 text-sm">
+                {(
+                  [
+                    [
+                      "Organisation admin",
+                      "Full control of programmes, members and cases",
+                    ],
+                    ["Caseworker", "Update requests and message people"],
+                    ["Viewer", "See the workspace, no changes"],
+                  ] as const
+                ).map(([title, body]) => (
+                  <li key={title}>
+                    <span className="block font-semibold">{title}</span>
+                    <span className="text-white/70">{body}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {!canManage ? (
+              <p className="border-border text-muted-foreground bg-card rounded-2xl border border-dashed p-4 text-sm">
+                Only organisation admins can add or remove people. Ask an admin
+                if you need a different role.
+              </p>
+            ) : null}
+          </aside>
+        </div>
       </div>
     </main>
   );

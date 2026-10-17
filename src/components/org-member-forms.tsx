@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CircleAlert, Loader2, UserPlus } from "lucide-react";
 
 import {
   addOrgMemberAction,
@@ -20,7 +21,7 @@ import {
 const initial: OrgMemberActionState = { ok: true };
 
 const selectClassName =
-  "flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
+  "flex min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function StatusMessage({ state }: { state: OrgMemberActionState }) {
   if (!state.message) return null;
@@ -28,9 +29,14 @@ function StatusMessage({ state }: { state: OrgMemberActionState }) {
     <p
       role="status"
       className={
-        state.ok ? "text-sm text-muted-foreground" : "text-sm text-destructive"
+        state.ok
+          ? "bg-secondary/60 rounded-lg px-3 py-2 text-sm"
+          : "bg-destructive/5 text-destructive flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
       }
     >
+      {!state.ok ? (
+        <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+      ) : null}
       {state.message}
     </p>
   );
@@ -49,14 +55,32 @@ export function AddOrgMemberForm({
   return (
     <form
       action={formAction}
-      className="space-y-3 rounded-lg border border-border p-4"
+      className="border-border bg-card space-y-5 rounded-2xl border p-6 shadow-sm"
     >
       <input type="hidden" name="organizationId" value={organizationId} />
+      <header className="flex items-start gap-3">
+        <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+          <UserPlus className="size-5" aria-hidden />
+        </span>
+        <div>
+          <h2 className="font-display text-lg font-semibold">Add a member</h2>
+          <p className="text-muted-foreground text-sm">
+            They must already have an AccessPath account registered as an
+            individual.
+          </p>
+        </div>
+      </header>
       <StatusMessage state={state} />
-      <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
         <div className="space-y-2">
           <Label htmlFor="member-email">Account email</Label>
-          <Input id="member-email" name="email" type="email" required />
+          <Input
+            id="member-email"
+            name="email"
+            type="email"
+            required
+            placeholder="name@example.com"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="member-role">Role</Label>
@@ -74,12 +98,15 @@ export function AddOrgMemberForm({
           </select>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        The person must already have an AccessPath account (registered as an
-        individual).
-      </p>
-      <Button type="submit" size="sm" disabled={pending}>
-        {pending ? "Adding…" : "Add member"}
+      <Button type="submit" disabled={pending}>
+        {pending ? (
+          <>
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Adding…
+          </>
+        ) : (
+          "Add member"
+        )}
       </Button>
     </form>
   );
@@ -106,15 +133,16 @@ export function OrgMemberRow({
   );
 
   return (
-    <div className="space-y-2">
+    <div className="border-border space-y-3 border-t pt-4">
       <div className="flex flex-wrap items-end gap-2">
-        <form action={roleAction} className="flex items-end gap-2">
+        <form
+          action={roleAction}
+          className="flex min-w-0 flex-1 flex-wrap items-end gap-2"
+        >
           <input type="hidden" name="organizationId" value={organizationId} />
           <input type="hidden" name="membershipId" value={membershipId} />
-          <div className="space-y-1">
-            <Label htmlFor={`role-${membershipId}`} className="sr-only">
-              Role
-            </Label>
+          <div className="min-w-[10rem] flex-1 space-y-1">
+            <Label htmlFor={`role-${membershipId}`}>Change role</Label>
             <select
               id={`role-${membershipId}`}
               name="role"
@@ -128,7 +156,12 @@ export function OrgMemberRow({
               ))}
             </select>
           </div>
-          <Button type="submit" size="sm" variant="outline" disabled={rolePending}>
+          <Button
+            type="submit"
+            size="sm"
+            variant="outline"
+            disabled={rolePending}
+          >
             {rolePending ? "Saving…" : "Save role"}
           </Button>
         </form>
@@ -140,9 +173,9 @@ export function OrgMemberRow({
             size="sm"
             variant="ghost"
             disabled={removePending}
-            className="text-destructive"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
-            {removePending ? "Removing…" : isSelf ? "Leave" : "Remove"}
+            {removePending ? "Removing…" : isSelf ? "Leave team" : "Remove"}
           </Button>
         </form>
       </div>

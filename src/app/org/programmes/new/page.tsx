@@ -1,10 +1,13 @@
+import { ArrowLeft, ClipboardPlus } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ProgrammeForm } from "@/components/programme-form";
+import { heroSecondaryAction, PageHero } from "@/components/page-hero";
+import { DEMO_REGION } from "@/lib/constants";
 import { requireAnyOrgMember } from "@/modules/auth/permissions";
 import { listActiveCategories } from "@/modules/programmes/repository";
-import { DEMO_REGION } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +26,28 @@ export default async function NewProgrammePage() {
   const categories = await listActiveCategories();
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 py-10 section-x">
-      <ProgrammeForm
-        organizationId={membership.organization.id}
-        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-        defaultRegion={DEMO_REGION}
+    <main className="flex flex-1 flex-col">
+      <PageHero
+        eyebrow="Organisation workspace"
+        icon={ClipboardPlus}
+        title="Publish a support programme"
+        description="Keep demo listings clearly fictional. New programmes start under review until a platform admin verifies them."
+        actions={
+          <Link href="/org/programmes" className={heroSecondaryAction}>
+            <ArrowLeft className="size-4" aria-hidden />
+            Back to programmes
+          </Link>
+        }
       />
+      <div className="section-x py-10">
+        <div className="mx-auto w-full max-w-4xl">
+          <ProgrammeForm
+            organizationId={membership.organization.id}
+            categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+            defaultRegion={DEMO_REGION}
+          />
+        </div>
+      </div>
     </main>
   );
 }
