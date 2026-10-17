@@ -50,12 +50,14 @@ export function dbConnectionHint(error: unknown): string {
   return message;
 }
 
+/**
+ * One pool per process in every environment. Creating a client per call
+ * leaks a fresh pool each time and exhausts Postgres connections
+ * ("too many clients"), especially on small Cloud SQL tiers.
+ */
 export function getSql() {
-  if (process.env.NODE_ENV !== "production") {
-    globalThis.__accesspathSql ??= createClient();
-    return globalThis.__accesspathSql;
-  }
-  return createClient();
+  globalThis.__accesspathSql ??= createClient();
+  return globalThis.__accesspathSql;
 }
 
 export function getDb() {
