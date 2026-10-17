@@ -33,9 +33,20 @@ export async function registerAction(
     redirect(await homePathForUser(current));
   }
 
+  const password = String(formData.get("password") || "");
+  const confirmPassword = String(formData.get("confirmPassword") || "");
+
+  if (password !== confirmPassword) {
+    return {
+      ok: false,
+      message:
+        "Passwords do not match. Re-enter the same password in both fields.",
+    };
+  }
+
   const account = {
     email: String(formData.get("email") || ""),
-    password: String(formData.get("password") || ""),
+    password,
     displayName: String(formData.get("displayName") || ""),
   };
 

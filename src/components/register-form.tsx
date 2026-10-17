@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { registerAction, type AuthActionState } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/password-input";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +38,9 @@ const selectClassName =
 export function RegisterForm() {
   const [state, formAction, pending] = useActionState(registerAction, initial);
   const [accountType, setAccountType] = useState<AccountType>("individual");
+  const [clientError, setClientError] = useState<string | null>(null);
   const isOrg = accountType === "organization";
+  const errorMessage = clientError ?? state.message;
 
   return (
     <Card className="border-0 bg-transparent shadow-none">
@@ -51,10 +54,26 @@ export function RegisterForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0">
-        <form action={formAction} className="space-y-4">
-          {state.message ? (
+        <form
+          action={formAction}
+          className="space-y-4"
+          onSubmit={(event) => {
+            const form = event.currentTarget;
+            const password = new FormData(form).get("password");
+            const confirm = new FormData(form).get("confirmPassword");
+            if (String(password ?? "") !== String(confirm ?? "")) {
+              event.preventDefault();
+              setClientError(
+                "Passwords do not match. Re-enter the same password in both fields.",
+              );
+              return;
+            }
+            setClientError(null);
+          }}
+        >
+          {errorMessage ? (
             <p role="alert" className="text-destructive text-sm">
-              {state.message}
+              {errorMessage}
             </p>
           ) : null}
 
@@ -111,14 +130,28 @@ export function RegisterForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password (8+ characters)</Label>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={8}
+              toggleLabel="Show password"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Re-enter password</Label>
+            <PasswordInput
+              id="confirmPassword"
+              name="confirmPassword"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              toggleLabel="Show confirmation password"
+            />
+            <p className="text-muted-foreground text-xs">
+              Type the same password again so we know it was entered correctly.
+            </p>
           </div>
 
           {isOrg ? (

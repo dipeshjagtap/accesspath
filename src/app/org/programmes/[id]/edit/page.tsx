@@ -48,7 +48,7 @@ export default async function EditProgrammePage({
   return (
     <main className="flex flex-1 flex-col">
       <PageHero
-        eyebrow="Organisation workspace"
+        eyebrow="3 short steps"
         icon={Pencil}
         title="Edit programme"
         description={programme.name}
@@ -60,26 +60,24 @@ export default async function EditProgrammePage({
         }
       />
       <div className="section-x py-10">
-        <div className="mx-auto w-full max-w-4xl">
-          <ProgrammeForm
-            organizationId={membership.organization.id}
-            categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-            defaultRegion={DEMO_REGION}
-            programme={{
-              id: programme.id,
-              name: programme.name,
-              categoryId: programme.categoryId,
-              purpose: programme.purpose,
-              description: programme.description,
-              regions: programme.regions,
-              requiredDocuments: programme.requiredDocuments,
-              availabilityStatus: programme.availabilityStatus,
-              officialUrl: programme.officialUrl,
-              evidenceUrl: programme.evidenceUrl,
-              isPublished: programme.publishedAt != null,
-            }}
-          />
-        </div>
+        <ProgrammeForm
+          organizationId={membership.organization.id}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+          defaultRegion={DEMO_REGION}
+          programme={{
+            id: programme.id,
+            name: programme.name,
+            categoryId: programme.categoryId,
+            purpose: programme.purpose,
+            description: programme.description,
+            regions: programme.regions,
+            requiredDocuments: programme.requiredDocuments,
+            availabilityStatus: programme.availabilityStatus,
+            officialUrl: programme.officialUrl,
+            evidenceUrl: programme.evidenceUrl,
+            isPublished: programme.publishedAt != null,
+          }}
+        />
       </div>
     </main>
   );

@@ -28,10 +28,10 @@ export default async function NewProgrammePage() {
   return (
     <main className="flex flex-1 flex-col">
       <PageHero
-        eyebrow="Organisation workspace"
+        eyebrow="3 short steps"
         icon={ClipboardPlus}
         title="Publish a support programme"
-        description="Keep demo listings clearly fictional. New programmes start under review until a platform admin verifies them."
+        description="Answer three prompts. Keep demo listings clearly fictional — new programmes start under review until a platform admin verifies them."
         actions={
           <Link href="/org/programmes" className={heroSecondaryAction}>
             <ArrowLeft className="size-4" aria-hidden />
@@ -40,13 +40,11 @@ export default async function NewProgrammePage() {
         }
       />
       <div className="section-x py-10">
-        <div className="mx-auto w-full max-w-4xl">
-          <ProgrammeForm
-            organizationId={membership.organization.id}
-            categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-            defaultRegion={DEMO_REGION}
-          />
-        </div>
+        <ProgrammeForm
+          organizationId={membership.organization.id}
+          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+          defaultRegion={DEMO_REGION}
+        />
       </div>
     </main>
   );
